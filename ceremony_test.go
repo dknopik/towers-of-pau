@@ -62,4 +62,7 @@ func TestParticipation(t *testing.T) {
 		t.Fatal("continuity check failed")
 	}
 
+	if !VerifyPairing(updatedCeremony) {
+		t.Fatal("Pairing check failed")
+	}
 }
