@@ -3,28 +3,29 @@ package towersofpau
 import (
 	"bytes"
 	"encoding/hex"
+
 	blst "github.com/supranational/blst/bindings/go"
 )
 
 type PowersOfTau struct {
-	G1Powers blst.P1Affines
-	G2Powers blst.P2Affines
+	G1Powers []*blst.P1
+	G2Powers []*blst.P2
 }
 
 type Witness struct {
-	RunningProducts blst.P1Affines
+	RunningProducts []*blst.P1
 	PotPubkeys      blst.P2Affines
 }
 
 type Transcript struct {
-	NumG1Powers int32
-	NumG2Powers int32
+	NumG1Powers int
+	NumG2Powers int
 	PowersOfTau PowersOfTau
 	Witness     Witness
 }
 
 type Ceremony struct {
-	Transcripts []Transcript
+	Transcripts []*Transcript
 }
 
 type P1Affine blst.P1Affine
