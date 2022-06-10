@@ -28,7 +28,13 @@ func TestInitialCeremony(t *testing.T) {
 		println("wrong number of g2powers")
 		t.FailNow()
 	}
-	err = Serialize(os.Stdout, ceremony)
+
+	file, err = os.Create("initialCeremony2.json")
+	if err != nil {
+		println("unable to open")
+		t.FailNow()
+	}
+	err = Serialize(file, ceremony)
 	if err != nil {
 		println("unable to serialize")
 		t.FailNow()

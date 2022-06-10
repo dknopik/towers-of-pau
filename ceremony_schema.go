@@ -36,19 +36,19 @@ type JSONPowersOfTau struct {
 }
 
 type JSONWitness struct {
-	RunningProducts []string
-	PotPubkeys      []string
+	RunningProducts []string `json:"runningProducts"`
+	PotPubkeys      []string `json:"potPubkeys"`
 }
 
 type JSONTranscript struct {
-	NumG1Powers int
-	NumG2Powers int
-	PowersOfTau JSONPowersOfTau
-	Witness     JSONWitness
+	NumG1Powers int             `json:"numG1Powers"`
+	NumG2Powers int             `json:"numG2Powers"`
+	PowersOfTau JSONPowersOfTau `json:"powersOfTau"`
+	Witness     JSONWitness     `json:"witness"`
 }
 
 type JSONCeremony struct {
-	Transcripts []JSONTranscript
+	Transcripts []JSONTranscript `json:"transcripts"`
 }
 
 func Deserialize(reader io.Reader) (*Ceremony, error) {
@@ -154,6 +154,22 @@ func Serialize(writer io.Writer, ceremony *Ceremony) error {
 				RunningProducts: make([]string, len(transcript.Witness.RunningProducts)),
 				PotPubkeys:      make([]string, len(transcript.Witness.PotPubkeys)),
 			},
+		}
+
+		for i, point := range transcript.PowersOfTau.G1Powers {
+			jsontranscript.PowersOfTau.G1Powers[i] = "0x" + hex.EncodeToString(point.Compress())
+		}
+
+		for i, point := range transcript.PowersOfTau.G2Powers {
+			jsontranscript.PowersOfTau.G2Powers[i] = "0x" + hex.EncodeToString(point.Compress())
+		}
+
+		for i, point := range transcript.Witness.RunningProducts {
+			jsontranscript.Witness.RunningProducts[i] = "0x" + hex.EncodeToString(point.Compress())
+		}
+
+		for i, point := range transcript.Witness.PotPubkeys {
+			jsontranscript.Witness.PotPubkeys[i] = "0x" + hex.EncodeToString(point.Compress())
 		}
 
 		jsonceremony.Transcripts = append(jsonceremony.Transcripts, jsontranscript)
