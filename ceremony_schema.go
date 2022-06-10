@@ -4,9 +4,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	blst "github.com/supranational/blst/bindings/go"
 	"io"
 	"strings"
+
+	blst "github.com/supranational/blst/bindings/go"
 )
 
 type PowersOfTau struct {
