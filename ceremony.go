@@ -5,29 +5,37 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	blst "github.com/supranational/blst/bindings/go"
 )
 
 // UpdateTranscript adds our contribution to the ceremony
 func UpdateTranscript(ceremony *Ceremony) error {
 	for _, transcript := range ceremony.Transcripts {
-		secret := createRandom()
+		rnd := createRandom()
+		secret := common.LeftPadBytes(rnd.Bytes(), 32)
 		if err := UpdatePowersOfTau(transcript, secret); err != nil {
 			return err
 		}
-		UpdateWitness(transcript, secret)
+		if err := UpdateWitness(transcript, secret); err != nil {
+			return err
+		}
 		// Clear secret
-		b := make([]byte, 32)
-		rand.Read(b)
-		secret.SetBytes(b)
+		rand.Read(secret)
 	}
 	return nil
 }
 
 // UpdatePowersOfTau updates the powers of tau with a secret
-func UpdatePowersOfTau(transcript *Transcript, secret *big.Int) error {
-	sec := new(blst.Scalar).Deserialize(secret.Bytes())
-	scalar := new(blst.Scalar).Deserialize(secret.Bytes())
+func UpdatePowersOfTau(transcript *Transcript, secret []byte) error {
+	sec := new(blst.Scalar).Deserialize(secret)
+	if sec == nil {
+		return errors.New("invalid secret")
+	}
+	scalar := new(blst.Scalar).Deserialize(secret)
+	if sec == nil {
+		return errors.New("invalid secret")
+	}
 	for i := 0; i < transcript.NumG1Powers; i++ {
 		transcript.PowersOfTau.G1Powers[i] = transcript.PowersOfTau.G1Powers[i].Mult(scalar)
 		if i < transcript.NumG2Powers {
@@ -43,13 +51,20 @@ func UpdatePowersOfTau(transcript *Transcript, secret *big.Int) error {
 }
 
 // UpdateWitness updates the witness with our secret.
-func UpdateWitness(transcript *Transcript, secret *big.Int) {
+func UpdateWitness(transcript *Transcript, secret []byte) error {
 	newProduct := transcript.Witness.RunningProducts[len(transcript.Witness.RunningProducts)-1]
-	sec := new(blst.Scalar).Deserialize(secret.Bytes())
+	sec := new(blst.Scalar).Deserialize(secret)
+	if sec == nil {
+		return errors.New("invalid secret")
+	}
 	newProduct = newProduct.Mult(sec)
 	transcript.Witness.RunningProducts = append(transcript.Witness.RunningProducts, newProduct)
-	newPk := new(blst.P2Affine).Deserialize(secret.Bytes())
+	newPk := new(blst.P2Affine).From(sec)
+	if newPk == nil {
+		return errors.New("invalid pk")
+	}
 	transcript.Witness.PotPubkeys = append(transcript.Witness.PotPubkeys, *newPk)
+	return nil
 }
 
 func createRandom() *big.Int {
@@ -79,7 +94,7 @@ func SubgroupChecksParticipant(ceremony Ceremony) bool {
 }
 
 // SubgroupChecksCoordinator verifies that a ceremony looks correctly
-func SubgroupChecksCoordinator(ceremony Ceremony) bool {
+func SubgroupChecksCoordinator(ceremony *Ceremony) bool {
 	for _, transcript := range ceremony.Transcripts {
 		for _, p := range transcript.PowersOfTau.G1Powers {
 			if !p.ToAffine().InG1() {
@@ -106,7 +121,7 @@ func SubgroupChecksCoordinator(ceremony Ceremony) bool {
 }
 
 // NonZeroCheck checks that no running_products are equal to infinity
-func NonZeroCheck(ceremony Ceremony) bool {
+func NonZeroCheck(ceremony *Ceremony) bool {
 	for _, transcript := range ceremony.Transcripts {
 		for _, p := range transcript.Witness.RunningProducts {
 			_ = p
@@ -116,7 +131,7 @@ func NonZeroCheck(ceremony Ceremony) bool {
 	return true
 }
 
-func PubkeyUniquenessCheck(ceremony Ceremony) bool {
+func PubkeyUniquenessCheck(ceremony *Ceremony) bool {
 	keys := make(map[blst.P2Affine]struct{}, 0)
 	var numKeys int
 	for _, transcript := range ceremony.Transcripts {
