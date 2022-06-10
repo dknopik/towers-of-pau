@@ -1,8 +1,10 @@
 package towersofpau
 
 import (
+	"bytes"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -32,10 +34,7 @@ func UpdatePowersOfTau(transcript *Transcript, secret []byte) error {
 	if sec == nil {
 		return errors.New("invalid secret")
 	}
-	scalar := new(blst.Scalar).Deserialize(secret)
-	if sec == nil {
-		return errors.New("invalid secret")
-	}
+	scalar := &(*sec)
 	for i := 0; i < transcript.NumG1Powers; i++ {
 		transcript.PowersOfTau.G1Powers[i] = transcript.PowersOfTau.G1Powers[i].Mult(scalar)
 		if i < transcript.NumG2Powers {
@@ -148,10 +147,12 @@ func WitnessContinuityCheck(prevCeremony, newCeremony *Ceremony) bool {
 		oldWitness := prevCeremony.Transcripts[index].Witness
 		newWitness := newCeremony.Transcripts[index].Witness
 		// TODO check that we do a correct check
-		if !p1ArrayEquals(oldWitness.RunningProducts, newWitness.RunningProducts) {
+		if !p1ArrayEquals(oldWitness.RunningProducts, newWitness.RunningProducts[:len(newWitness.RunningProducts)-1]) {
+			panic(fmt.Sprintf("%v %v %v", index, oldWitness.RunningProducts, newWitness.RunningProducts))
 			return false
 		}
-		if !p2ArrayEquals(oldWitness.PotPubkeys, newWitness.PotPubkeys) {
+		if !p2ArrayEquals(oldWitness.PotPubkeys, newWitness.PotPubkeys[:len(newWitness.PotPubkeys)-1]) {
+			panic(fmt.Sprintf("%v %v %v", index, oldWitness.PotPubkeys, newWitness.PotPubkeys))
 			return false
 		}
 	}
@@ -176,6 +177,49 @@ func p2ArrayEquals(p1, p2 blst.P2Affines) bool {
 	}
 	for idx := range p1 {
 		if !p1[idx].Equals(&p2[idx]) {
+			return false
+		}
+	}
+	return true
+}
+
+func VerifyPairing(ceremony *Ceremony) bool {
+	for _, t := range ceremony.Transcripts {
+		if !verifyPairing(t.PowersOfTau) {
+			return false
+		}
+	}
+	return true
+}
+
+func verifyPairing(pot PowersOfTau) bool {
+
+	g2_0 := pot.G2Powers[0].ToAffine()
+	g2_1 := pot.G2Powers[1].ToAffine()
+
+	for i := 0; i < len(pot.G1Powers)-1; i++ {
+		pair1 := blst.Fp12MillerLoop(g2_1, pot.G1Powers[i].ToAffine())
+		pair1.FinalExp()
+
+		pair2 := blst.Fp12MillerLoop(g2_0, pot.G1Powers[i+1].ToAffine())
+		pair2.FinalExp()
+
+		if !bytes.Equal(pair1.ToBendian(), pair2.ToBendian()) {
+			return false
+		}
+	}
+
+	g1_0 := pot.G1Powers[0].ToAffine()
+	g1_1 := pot.G1Powers[1].ToAffine()
+
+	for i := 0; i < len(pot.G2Powers)-1; i++ {
+		pair1 := blst.Fp12MillerLoop(pot.G2Powers[i].ToAffine(), g1_1)
+		pair1.FinalExp()
+
+		pair2 := blst.Fp12MillerLoop(pot.G2Powers[i+1].ToAffine(), g1_0)
+		pair2.FinalExp()
+
+		if !bytes.Equal(pair1.ToBendian(), pair2.ToBendian()) {
 			return false
 		}
 	}

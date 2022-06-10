@@ -29,6 +29,10 @@ func TestCeremonyChecks(t *testing.T) {
 			t.Fatal("Pubkey uniqueness check failed")
 		}
 	*/
+
+	if !VerifyPairing(ceremony) {
+		t.Fatal("Pairing check failed")
+	}
 }
 
 func TestParticipation(t *testing.T) {
@@ -41,15 +45,21 @@ func TestParticipation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := UpdateTranscript(ceremony); err != nil {
+	updatedCeremony := ceremony.Copy()
+	if err := UpdateTranscript(updatedCeremony); err != nil {
 		t.Fatal(err)
 	}
 
-	if !SubgroupChecksCoordinator(ceremony) {
+	if !SubgroupChecksCoordinator(updatedCeremony) {
 		t.Fatalf("Subgroup check failed")
 	}
 
-	if !NonZeroCheck(ceremony) {
+	if !NonZeroCheck(updatedCeremony) {
 		t.Fatal("NonZero check failed")
 	}
+
+	if !WitnessContinuityCheck(ceremony, updatedCeremony) {
+		t.Fatal("continuity check failed")
+	}
+
 }

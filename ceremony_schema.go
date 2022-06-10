@@ -15,9 +15,35 @@ type PowersOfTau struct {
 	G2Powers []*blst.P2
 }
 
+func (p *PowersOfTau) Copy() PowersOfTau {
+	p1 := make([]*blst.P1, 0, len(p.G1Powers))
+	for _, pow := range p.G1Powers {
+		p1 = append(p1, &(*pow))
+	}
+	p2 := make([]*blst.P2, 0, len(p.G2Powers))
+	for _, pow := range p.G2Powers {
+		p2 = append(p2, &(*pow))
+	}
+	return PowersOfTau{
+		G1Powers: p1,
+		G2Powers: p2,
+	}
+}
+
 type Witness struct {
 	RunningProducts []*blst.P1
 	PotPubkeys      blst.P2Affines
+}
+
+func (w *Witness) Copy() Witness {
+	products := make([]*blst.P1, 0, len(w.RunningProducts))
+	for _, p := range w.RunningProducts {
+		products = append(products, &(*p))
+	}
+	return Witness{
+		RunningProducts: products,
+		PotPubkeys:      w.PotPubkeys,
+	}
 }
 
 type Transcript struct {
@@ -27,8 +53,27 @@ type Transcript struct {
 	Witness     Witness
 }
 
+func (t *Transcript) Copy() *Transcript {
+	return &Transcript{
+		NumG1Powers: t.NumG1Powers,
+		NumG2Powers: t.NumG2Powers,
+		PowersOfTau: t.PowersOfTau.Copy(),
+		Witness:     t.Witness.Copy(),
+	}
+}
+
 type Ceremony struct {
 	Transcripts []*Transcript
+}
+
+func (c *Ceremony) Copy() *Ceremony {
+	transcripts := make([]*Transcript, 0, len(c.Transcripts))
+	for _, t := range c.Transcripts {
+		transcripts = append(transcripts, t.Copy())
+	}
+	return &Ceremony{
+		Transcripts: transcripts,
+	}
 }
 
 type JSONPowersOfTau struct {
