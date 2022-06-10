@@ -1,7 +1,6 @@
 package towersofpau
 
 import (
-	"encoding/json"
 	"os"
 	"testing"
 )
@@ -12,12 +11,7 @@ func TestInitialCeremony(t *testing.T) {
 		println("unable to open")
 		t.FailNow()
 	}
-	decoder := json.NewDecoder(file)
-	decoder.DisallowUnknownFields()
-	ceremony := Ceremony{
-		[]Transcript{},
-	}
-	err = decoder.Decode(&ceremony)
+	ceremony, err := Deserialize(file)
 	if err != nil {
 		println("unable to decode", err.Error())
 		t.FailNow()
@@ -26,6 +20,17 @@ func TestInitialCeremony(t *testing.T) {
 		println("empty result")
 		t.FailNow()
 	}
-
-	println("wat", len(ceremony.Transcripts))
+	if ceremony.Transcripts[0].NumG1Powers != len(ceremony.Transcripts[0].PowersOfTau.G1Powers) {
+		println("wrong number of g1powers")
+		t.FailNow()
+	}
+	if ceremony.Transcripts[0].NumG2Powers != len(ceremony.Transcripts[0].PowersOfTau.G2Powers) {
+		println("wrong number of g2powers")
+		t.FailNow()
+	}
+	err = Serialize(os.Stdout, ceremony)
+	if err != nil {
+		println("unable to serialize")
+		t.FailNow()
+	}
 }
