@@ -167,7 +167,7 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 	}
 	fmt.Println("Submission verified successfully in %v", time.Since(start))
 	// Ceremony was valid, store it
-	c.ceremonies = append(c.ceremonies, oldCeremony)
+	c.ceremonies = append(c.ceremonies, newCeremony)
 	rw.WriteHeader(200)
 
 	c.currentSlot++
