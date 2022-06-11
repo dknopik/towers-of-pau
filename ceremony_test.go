@@ -70,10 +70,12 @@ func TestParticipation(t *testing.T) {
 
 func checkLength(prev, next *Ceremony) {
 	for i, t := range prev.Transcripts {
-		if len(t.Witness.PotPubkeys) != len(next.Transcripts[i].Witness.PotPubkeys)+1 {
+		if len(t.Witness.PotPubkeys) >= len(next.Transcripts[i].Witness.PotPubkeys) {
 			panic("invalid pot pubkeys")
 		}
-
+		if len(t.Witness.RunningProducts) >= len(next.Transcripts[i].Witness.RunningProducts) {
+			panic("invalid running products")
+		}
 	}
 }
 

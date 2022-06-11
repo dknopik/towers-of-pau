@@ -35,12 +35,12 @@ type Witness struct {
 	PotPubkeys      blst.P2Affines
 }
 
-func (w *Witness) Copy() Witness {
+func (w *Witness) Copy() *Witness {
 	products := make([]*blst.P1, 0, len(w.RunningProducts))
 	for _, p := range w.RunningProducts {
 		products = append(products, &(*p))
 	}
-	return Witness{
+	return &Witness{
 		RunningProducts: products,
 		PotPubkeys:      w.PotPubkeys,
 	}
@@ -50,7 +50,7 @@ type Transcript struct {
 	NumG1Powers int
 	NumG2Powers int
 	PowersOfTau PowersOfTau
-	Witness     Witness
+	Witness     *Witness
 }
 
 func (t *Transcript) Copy() *Transcript {
@@ -122,7 +122,7 @@ func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
 				G1Powers: make([]*blst.P1, len(jsontranscript.PowersOfTau.G1Powers)),
 				G2Powers: make([]*blst.P2, len(jsontranscript.PowersOfTau.G2Powers)),
 			},
-			Witness: Witness{
+			Witness: &Witness{
 				RunningProducts: make([]*blst.P1, len(jsontranscript.Witness.RunningProducts)),
 				PotPubkeys:      make(blst.P2Affines, len(jsontranscript.Witness.PotPubkeys)),
 			},
