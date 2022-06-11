@@ -23,12 +23,10 @@ const (
 )
 
 func NewCoordinator(initialCeremony *towersofpau.Ceremony) *Coordinator {
-	ceremonies := make([]*towersofpau.Ceremony, 0, rounds)
-	ceremonies = append(ceremonies, initialCeremony)
 	return &Coordinator{
 		slotByTicket: make(map[string]*slot),
 		slots:        make([]*slot, 0),
-		ceremonies:   ceremonies,
+		ceremony:     initialCeremony,
 		maxRounds:    rounds,
 	}
 }
@@ -38,7 +36,7 @@ type Coordinator struct {
 	slotByTicket  map[string]*slot
 	slots         []*slot
 	currentSlot   int
-	ceremonies    []*towersofpau.Ceremony
+	ceremony      *towersofpau.Ceremony
 	ceremonyMutex sync.Mutex
 	maxRounds     int
 }
@@ -109,8 +107,7 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 			rw.WriteHeader(403)
 			return
 		} else {
-			ceremony := c.ceremonies[len(c.ceremonies)-1]
-			jsonceremony, err := towersofpau.SerializeJSONCeremony(ceremony)
+			jsonceremony, err := towersofpau.SerializeJSONCeremony(c.ceremony)
 			if err != nil {
 				rw.WriteHeader(500)
 				return
@@ -156,7 +153,7 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 
 	c.ceremonyMutex.Lock()
 	defer c.ceremonyMutex.Unlock()
-	oldCeremony := c.ceremonies[len(c.ceremonies)-1]
+	oldCeremony := c.ceremony
 	fmt.Println("Verifying submission")
 	start := time.Now()
 	if err := towersofpau.VerifySubmission(oldCeremony, newCeremony); err != nil {
@@ -165,9 +162,9 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 		rw.WriteHeader(400)
 		return
 	}
-	fmt.Println("Submission verified successfully in %v", time.Since(start))
+	fmt.Printf("Submission verified successfully in %v", time.Since(start))
 	// Ceremony was valid, store it
-	c.ceremonies = append(c.ceremonies, newCeremony)
+	c.ceremony = newCeremony
 	rw.WriteHeader(200)
 
 	c.currentSlot++

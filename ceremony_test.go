@@ -65,8 +65,15 @@ func TestParticipation(t *testing.T) {
 	if !VerifyPairing(updatedCeremony) {
 		t.Fatal("Pairing check failed")
 	}
-	if false {
-		panic("adsf")
+	checkLength(ceremony, updatedCeremony)
+}
+
+func checkLength(prev, next *Ceremony) {
+	for i, t := range prev.Transcripts {
+		if len(t.Witness.PotPubkeys) != len(next.Transcripts[i].Witness.PotPubkeys)+1 {
+			panic("invalid pot pubkeys")
+		}
+
 	}
 }
 

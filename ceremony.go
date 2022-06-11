@@ -124,7 +124,18 @@ func UpdateWitness(transcript *Transcript, secret []byte) error {
 }
 
 func createRandom() *big.Int {
-	return big.NewInt(3)
+	for i := 0; i < 1000000; i++ {
+		b := make([]byte, 32)
+		n, err := rand.Read(b)
+		if err != nil || n != 32 {
+			panic("could not get good randomness")
+		}
+		sec := new(blst.Scalar).Deserialize(b)
+		if sec != nil {
+			return new(big.Int).SetBytes(b)
+		}
+	}
+	panic("could not find secret in 1 million tries")
 }
 
 // SubgroupChecks verifies that a ceremony looks correctly
