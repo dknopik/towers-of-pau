@@ -1,7 +1,6 @@
 package towersofpau
 
 import (
-	"bytes"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -253,56 +252,64 @@ func p2ArrayEquals(p1, p2 blst.P2Affines) bool {
 
 func VerifyPairing(ceremony *Ceremony) bool {
 	for _, t := range ceremony.Transcripts {
-		if !verifyPairing(t.PowersOfTau) {
+		if !verifyPairing(t) {
 			return false
 		}
 	}
 	return true
 }
 
-func verifyPairing(pot PowersOfTau) bool {
-	if len(pot.G1Powers) < 2 || len(pot.G2Powers) < 2 {
+func verifyPairing(t *Transcript) bool {
+	if len(t.Witness.PotPubkeys) != len(t.Witness.RunningProducts) ||
+		len(t.PowersOfTau.G1Powers) < 2 || len(t.PowersOfTau.G2Powers) < 2 {
 		return false
 	}
 
 	var (
-		g2_0 = pot.G2Powers[0].ToAffine()
-		g2_1 = pot.G2Powers[1].ToAffine()
+		g2_0 = t.PowersOfTau.G2Powers[0].ToAffine()
+		g2_1 = t.PowersOfTau.G2Powers[1].ToAffine()
 
-		g1_0 = pot.G1Powers[0].ToAffine()
-		g1_1 = pot.G1Powers[1].ToAffine()
+		g1_0 = t.PowersOfTau.G1Powers[0].ToAffine()
+		g1_1 = t.PowersOfTau.G1Powers[1].ToAffine()
 
 		failed int32
 		wg     = new(sync.WaitGroup)
 	)
 
-	for i := 0; i < len(pot.G1Powers)-1; i++ {
+	for i := 0; i < len(t.PowersOfTau.G1Powers)-1; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			pair1 := blst.Fp12MillerLoop(g2_1, pot.G1Powers[i].ToAffine())
-			pair1.FinalExp()
+			pair1 := blst.Fp12MillerLoop(g2_1, t.PowersOfTau.G1Powers[i].ToAffine())
+			pair2 := blst.Fp12MillerLoop(g2_0, t.PowersOfTau.G1Powers[i+1].ToAffine())
 
-			pair2 := blst.Fp12MillerLoop(g2_0, pot.G1Powers[i+1].ToAffine())
-			pair2.FinalExp()
-
-			if !bytes.Equal(pair1.ToBendian(), pair2.ToBendian()) {
+			if !blst.Fp12FinalVerify(pair1, pair2) {
 				atomic.AddInt32(&failed, 1)
 			}
 		}(i)
 	}
 
-	for i := 0; i < len(pot.G2Powers)-1; i++ {
+	for i := 0; i < len(t.PowersOfTau.G2Powers)-1; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			pair1 := blst.Fp12MillerLoop(pot.G2Powers[i].ToAffine(), g1_1)
-			pair1.FinalExp()
+			pair1 := blst.Fp12MillerLoop(t.PowersOfTau.G2Powers[i].ToAffine(), g1_1)
+			pair2 := blst.Fp12MillerLoop(t.PowersOfTau.G2Powers[i+1].ToAffine(), g1_0)
 
-			pair2 := blst.Fp12MillerLoop(pot.G2Powers[i+1].ToAffine(), g1_0)
-			pair2.FinalExp()
+			if !blst.Fp12FinalVerify(pair1, pair2) {
+				atomic.AddInt32(&failed, 1)
+			}
+		}(i)
+	}
 
-			if !bytes.Equal(pair1.ToBendian(), pair2.ToBendian()) {
+	for i := 0; i < len(t.Witness.RunningProducts)-1; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			pair1 := blst.Fp12MillerLoop(&t.Witness.PotPubkeys[i+1], t.Witness.RunningProducts[i].ToAffine())
+			pair2 := blst.Fp12MillerLoop(g2_1, t.Witness.RunningProducts[i+1].ToAffine())
+
+			if !blst.Fp12FinalVerify(pair1, pair2) {
 				atomic.AddInt32(&failed, 1)
 			}
 		}(i)
