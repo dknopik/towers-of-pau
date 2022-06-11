@@ -158,19 +158,21 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 	defer c.ceremonyMutex.Unlock()
 	oldCeremony := c.ceremonies[len(c.ceremonies)-1]
 	fmt.Println("Verifying submission")
+	start := time.Now()
 	if err := towersofpau.VerifySubmission(oldCeremony, newCeremony); err != nil {
 		c.currentSlot++
 		fmt.Println(err)
 		rw.WriteHeader(400)
 		return
 	}
-	fmt.Println("Submission verified successfully")
+	fmt.Println("Submission verified successfully in %v", time.Since(start))
 	// Ceremony was valid, store it
 	c.ceremonies = append(c.ceremonies, oldCeremony)
 	rw.WriteHeader(200)
 
 	c.currentSlot++
 
+	fmt.Println("Writing submission to file")
 	file, err := os.Create(fmt.Sprintf("history/%d.json", slot.index))
 	if err != nil {
 		return

@@ -65,7 +65,9 @@ func TestParticipation(t *testing.T) {
 	if !VerifyPairing(updatedCeremony) {
 		t.Fatal("Pairing check failed")
 	}
-
+	if false {
+		panic("adsf")
+	}
 }
 
 func BenchmarkVerifyCeremonyPairing(t *testing.B) {
@@ -96,6 +98,7 @@ func BenchmarkContribution(t *testing.B) {
 	if err := UpdateTranscript(ceremony); err != nil {
 		t.Fatal(err)
 	}
+	panic("asdf")
 }
 
 func BenchmarkPairing(b *testing.B) {

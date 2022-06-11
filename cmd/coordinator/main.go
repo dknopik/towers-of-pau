@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ func main() {
 	if err != nil {
 		log.Fatal("unable to open")
 	}
+	fmt.Println("Reading initial ceremony")
 	ceremony, err := towersofpau.Deserialize(file)
 	if err != nil {
 		log.Fatal("unable to decode", err.Error())
@@ -26,6 +28,7 @@ func main() {
 	if err != nil && !os.IsExist(err) {
 		log.Fatal("unable to create history dir", err.Error())
 	}
+	fmt.Println("Starting coordinator")
 	coordinator := NewCoordinator(ceremony)
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/participation", coordinator.RegisterParticipant).

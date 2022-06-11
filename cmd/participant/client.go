@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,7 +55,7 @@ func (c *Client) Register() error {
 		return err
 	}
 	c.registration = &part
-	fmt.Printf("Registered for ceremony at time %v\n", part.Start)
+	fmt.Printf("Registered for ceremony at time %v\n", time.Unix(int64(part.Start), 0))
 	return nil
 }
 
@@ -97,13 +97,10 @@ func (c *Client) SubmitCeremony(ceremony *towersofpau.Ceremony) error {
 		return errors.New("no registration available")
 	}
 	url := fmt.Sprintf("%v/%v/%v", c.url, "participation", c.registration.Ticket)
-	reader, writer := io.Pipe()
-	rw := bufio.NewReadWriter(bufio.NewReader(reader), bufio.NewWriter(writer))
-	go func() {
-		towersofpau.Serialize(rw, ceremony)
-	}()
 
-	resp, err := http.Post(url, "text/html; charset=UTF-8", rw)
+	buf := new(bytes.Buffer)
+	towersofpau.Serialize(buf, ceremony)
+	resp, err := http.Post(url, "text/html", buf)
 	if err != nil {
 		return err
 	}

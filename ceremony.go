@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
 	blst "github.com/supranational/blst/bindings/go"
@@ -16,7 +18,7 @@ func UpdateTranscript(ceremony *Ceremony) error {
 	for _, transcript := range ceremony.Transcripts {
 		rnd := createRandom()
 		secret := common.LeftPadBytes(rnd.Bytes(), 32)
-		if err := UpdatePowersOfTau(transcript, secret); err != nil {
+		if err := UpdatePowersOfTauFast(transcript, secret); err != nil {
 			return err
 		}
 		if err := UpdateWitness(transcript, secret); err != nil {
@@ -70,6 +72,37 @@ func UpdatePowersOfTau(transcript *Transcript, secret []byte) error {
 			return errors.New("Scalar mult returned false")
 		}
 	}
+	return nil
+}
+
+func UpdatePowersOfTauFast(transcript *Transcript, secret []byte) error {
+	sec := new(blst.Scalar).Deserialize(secret)
+	if sec == nil {
+		return errors.New("invalid secret")
+	}
+	scalar := &(*sec)
+	scalars := make([]*blst.Scalar, transcript.NumG1Powers)
+	for i := 0; i < transcript.NumG1Powers; i++ {
+		scalars[i] = &(*scalar)
+		var ok bool
+		scalar, ok = scalar.Mul(sec)
+		if !ok {
+			panic("Scalar mult returned false")
+		}
+	}
+
+	wg := new(sync.WaitGroup)
+	wg.Add(transcript.NumG1Powers)
+	for i := 0; i < transcript.NumG1Powers; i++ {
+		go func(i int) {
+			defer wg.Done()
+			transcript.PowersOfTau.G1Powers[i] = transcript.PowersOfTau.G1Powers[i].Mult(scalars[i])
+			if i < transcript.NumG2Powers {
+				transcript.PowersOfTau.G2Powers[i] = transcript.PowersOfTau.G2Powers[i].Mult(scalars[i])
+			}
+		}(i)
+	}
+	wg.Wait()
 	return nil
 }
 
@@ -221,34 +254,49 @@ func verifyPairing(pot PowersOfTau) bool {
 		return false
 	}
 
-	g2_0 := pot.G2Powers[0].ToAffine()
-	g2_1 := pot.G2Powers[1].ToAffine()
+	var (
+		g2_0 = pot.G2Powers[0].ToAffine()
+		g2_1 = pot.G2Powers[1].ToAffine()
+
+		g1_0 = pot.G1Powers[0].ToAffine()
+		g1_1 = pot.G1Powers[1].ToAffine()
+
+		failed int32
+		wg     = new(sync.WaitGroup)
+	)
 
 	for i := 0; i < len(pot.G1Powers)-1; i++ {
-		pair1 := blst.Fp12MillerLoop(g2_1, pot.G1Powers[i].ToAffine())
-		pair1.FinalExp()
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			pair1 := blst.Fp12MillerLoop(g2_1, pot.G1Powers[i].ToAffine())
+			pair1.FinalExp()
 
-		pair2 := blst.Fp12MillerLoop(g2_0, pot.G1Powers[i+1].ToAffine())
-		pair2.FinalExp()
+			pair2 := blst.Fp12MillerLoop(g2_0, pot.G1Powers[i+1].ToAffine())
+			pair2.FinalExp()
 
-		if !bytes.Equal(pair1.ToBendian(), pair2.ToBendian()) {
-			return false
-		}
+			if !bytes.Equal(pair1.ToBendian(), pair2.ToBendian()) {
+				atomic.AddInt32(&failed, 1)
+			}
+		}(i)
 	}
-
-	g1_0 := pot.G1Powers[0].ToAffine()
-	g1_1 := pot.G1Powers[1].ToAffine()
 
 	for i := 0; i < len(pot.G2Powers)-1; i++ {
-		pair1 := blst.Fp12MillerLoop(pot.G2Powers[i].ToAffine(), g1_1)
-		pair1.FinalExp()
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			pair1 := blst.Fp12MillerLoop(pot.G2Powers[i].ToAffine(), g1_1)
+			pair1.FinalExp()
 
-		pair2 := blst.Fp12MillerLoop(pot.G2Powers[i+1].ToAffine(), g1_0)
-		pair2.FinalExp()
+			pair2 := blst.Fp12MillerLoop(pot.G2Powers[i+1].ToAffine(), g1_0)
+			pair2.FinalExp()
 
-		if !bytes.Equal(pair1.ToBendian(), pair2.ToBendian()) {
-			return false
-		}
+			if !bytes.Equal(pair1.ToBendian(), pair2.ToBendian()) {
+				atomic.AddInt32(&failed, 1)
+			}
+		}(i)
 	}
-	return true
+
+	wg.Wait()
+	return failed == 0
 }
