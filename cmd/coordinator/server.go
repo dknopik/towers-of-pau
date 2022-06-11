@@ -124,6 +124,7 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 				rw.WriteHeader(500)
 				return
 			}
+			fmt.Printf("Participant no. %v retrieved ceremony\n", slot.index)
 			response.Ceremony = &jsonceremony
 		}
 	} else if c.currentSlot < slot.index && slot.start <= time.Now().Unix()+1 {
@@ -141,7 +142,6 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 		return
 	}
 	rw.Write(resp)
-	fmt.Printf("Participant no. %v retrieved ceremony\n", slot.index)
 }
 
 func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) {
