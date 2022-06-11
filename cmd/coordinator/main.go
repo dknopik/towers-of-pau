@@ -24,7 +24,7 @@ func main() {
 	}
 	err = os.Mkdir("history", os.ModePerm)
 	if err != nil && !os.IsExist(err) {
-		return
+		log.Fatal("unable to create history dir", err.Error())
 	}
 	coordinator := NewCoordinator(ceremony)
 	router := mux.NewRouter().StrictSlash(true)

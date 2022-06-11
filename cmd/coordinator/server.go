@@ -55,6 +55,7 @@ func (c *Coordinator) RegisterParticipant(rw http.ResponseWriter, req *http.Requ
 	}
 	slot.deadline = slot.start + participantTime
 	slot.participantTicket = getTicket()
+	c.slots = append(c.slots, slot)
 	c.slotByTicket[slot.participantTicket] = slot
 	resp, err := json.Marshal(towersofpau.RegistrationResponse{
 		Start:    slot.start,
@@ -132,15 +133,15 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 }
 
 func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) {
-	fmt.Println("Received Submission")
 	c.mutex.Lock()
 	ticket := mux.Vars(req)["ticket"]
 	slot := c.slotByTicket[ticket]
-	if slot == nil || slot.index < c.currentSlot {
+	if slot == nil || slot.index != c.currentSlot {
 		c.mutex.Unlock()
 		rw.WriteHeader(403)
 		return
 	}
+	fmt.Println("Received Submission")
 	slot.submitted = true
 	c.mutex.Unlock()
 
