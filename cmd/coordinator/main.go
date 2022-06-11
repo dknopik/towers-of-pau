@@ -8,9 +8,11 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
+var mutex sync.Mutex
 var slotByTicket = make(map[string]*slot)
 var slots = make([]*slot, 0)
 var currentSlot = 0
@@ -20,6 +22,7 @@ const (
 	participantTime     = 20
 	coordinatorTime     = 120
 	immediateStartDelay = 5
+	pushbackDelay       = 10
 )
 
 func main() {
@@ -46,6 +49,8 @@ func main() {
 }
 
 func registerParticipant(rw http.ResponseWriter, req *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	slot := new(slot)
 	slot.index = len(slots)
 	if currentSlot == slot.index {
@@ -79,10 +84,12 @@ func getTicket() string {
 }
 
 func retrieveParticipant(rw http.ResponseWriter, req *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	ticket := mux.Vars(req)["ticket"]
 	slot := slotByTicket[ticket]
-	if slot == nil {
-		rw.WriteHeader(404)
+	if slot == nil || slot.index < currentSlot {
+		rw.WriteHeader(403)
 		return
 	}
 
@@ -90,6 +97,11 @@ func retrieveParticipant(rw http.ResponseWriter, req *http.Request) {
 		Start:    slot.start,
 		Deadline: slot.deadline,
 		Ceremony: nil,
+	}
+
+	// check if current slot has expired or is in processing
+	if currentSlot < slot.index {
+
 	}
 
 	if currentSlot == slot.index {
@@ -100,6 +112,20 @@ func retrieveParticipant(rw http.ResponseWriter, req *http.Request) {
 		}
 		response.Ceremony = &jsonceremony
 	}
+
+	if currentSlot < slot.index && slot.start < time.Now().Unix() {
+		for _, slot := range slots[currentSlot+1:] {
+			slot.start += pushbackDelay
+			slot.deadline += pushbackDelay
+		}
+	}
+
+	resp, err := json.Marshal(response)
+	if err != nil {
+		rw.WriteHeader(500)
+		return
+	}
+	rw.Write(resp)
 }
 
 func submitCeremony(rw http.ResponseWriter, req *http.Request) {
