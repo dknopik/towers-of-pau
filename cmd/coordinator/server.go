@@ -76,6 +76,7 @@ func (c *Coordinator) RegisterParticipant(rw http.ResponseWriter, req *http.Requ
 		return
 	}
 	rw.Write(resp)
+	fmt.Printf("Registered participant no. %v for %v\n", slot.index, time.Unix(slot.start, 0))
 }
 
 func getTicket() string {
@@ -140,6 +141,7 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 		return
 	}
 	rw.Write(resp)
+	fmt.Printf("Participant no. %v retrieved ceremony\n", slot.index)
 }
 
 func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) {
@@ -151,7 +153,7 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 		rw.WriteHeader(403)
 		return
 	}
-	fmt.Println("Received Submission")
+	fmt.Printf("Received submission from %v\n", slot.index)
 	slot.submitted = true
 	c.mutex.Unlock()
 
@@ -165,11 +167,11 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 	c.ceremonyMutex.Lock()
 	defer c.ceremonyMutex.Unlock()
 	oldCeremony := c.ceremony
-	fmt.Println("Verifying submission")
+	fmt.Printf("Verifying submission from %v\n", slot.index)
 	start := time.Now()
 	if err := towersofpau.VerifySubmission(oldCeremony, newCeremony); err != nil {
 		c.currentSlot++
-		fmt.Println(err)
+		fmt.Printf("Submission verification from %v failed: %v\n", slot.index, err)
 		rw.WriteHeader(400)
 		return
 	}
@@ -180,7 +182,6 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 
 	c.currentSlot++
 
-	fmt.Println("Writing submission to file")
 	file, err := os.Create(fmt.Sprintf("history/%d.json", slot.index))
 	if err != nil {
 		return
