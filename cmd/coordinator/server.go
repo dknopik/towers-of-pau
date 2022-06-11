@@ -48,10 +48,21 @@ func (c *Coordinator) RegisterParticipant(rw http.ResponseWriter, req *http.Requ
 	defer c.mutex.Unlock()
 	slot := new(slot)
 	slot.index = len(c.slots)
+	// check if current slot has expired or is in processing
+	for c.currentSlot < len(c.slots) {
+		if c.slots[c.currentSlot].submitted || c.slots[c.currentSlot].deadline >= time.Now().Unix() {
+			break
+		} else {
+			c.currentSlot++
+		}
+	}
 	if c.currentSlot == slot.index {
 		slot.start = time.Now().Unix() + immediateStartDelay
 	} else {
 		slot.start = c.slots[len(c.slots)-1].deadline + coordinatorTime
+		if time.Now().Unix()+immediateStartDelay > slot.start {
+			slot.start = time.Now().Unix() + immediateStartDelay
+		}
 	}
 	slot.deadline = slot.start + participantTime
 	slot.participantTicket = getTicket()
