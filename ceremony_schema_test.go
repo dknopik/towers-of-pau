@@ -1,6 +1,7 @@
 package towersofpau
 
 import (
+	"io"
 	"os"
 	"testing"
 )
@@ -8,35 +9,24 @@ import (
 func TestInitialCeremony(t *testing.T) {
 	file, err := os.Open("initialCeremony.json")
 	if err != nil {
-		println("unable to open")
-		t.FailNow()
+		t.Error("unable to open")
 	}
 	ceremony, err := Deserialize(file)
 	if err != nil {
-		println("unable to decode", err.Error())
-		t.FailNow()
+		t.Error("unable to decode", err.Error())
 	}
 	if len(ceremony.Transcripts) == 0 {
-		println("empty result")
-		t.FailNow()
+		t.Error("empty result")
 	}
 	if ceremony.Transcripts[0].NumG1Powers != len(ceremony.Transcripts[0].PowersOfTau.G1Powers) {
-		println("wrong number of g1powers")
-		t.FailNow()
+		t.Error("wrong number of g1powers")
 	}
 	if ceremony.Transcripts[0].NumG2Powers != len(ceremony.Transcripts[0].PowersOfTau.G2Powers) {
-		println("wrong number of g2powers")
-		t.FailNow()
+		t.Error("wrong number of g2powers")
 	}
 
-	file, err = os.Create("initialCeremony2.json")
+	err = Serialize(io.Discard, ceremony)
 	if err != nil {
-		println("unable to open")
-		t.FailNow()
-	}
-	err = Serialize(file, ceremony)
-	if err != nil {
-		println("unable to serialize")
-		t.FailNow()
+		t.Error("unable to serialize", err.Error())
 	}
 }
