@@ -19,7 +19,7 @@ func main() {
 		log.Fatal("unable to decode", err.Error())
 	}
 	err = os.Mkdir("history", os.ModePerm)
-	if err != nil {
+	if err != nil && !os.IsExist(err) {
 		return
 	}
 	coordinator := NewCoordinator(ceremony)
