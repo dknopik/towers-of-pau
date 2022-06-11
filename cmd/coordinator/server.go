@@ -173,7 +173,7 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 		rw.WriteHeader(400)
 		return
 	}
-	fmt.Printf("Submission verified successfully in %v", time.Since(start))
+	fmt.Printf("Submission verified successfully in %v\n", time.Since(start))
 	// Ceremony was valid, store it
 	c.ceremony = newCeremony
 	rw.WriteHeader(200)

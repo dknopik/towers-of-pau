@@ -50,30 +50,8 @@ func TestParticipation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !SubgroupChecksCoordinator(updatedCeremony) {
-		t.Fatalf("Subgroup check failed")
-	}
-
-	if !NonZeroCheck(updatedCeremony) {
-		t.Fatal("NonZero check failed")
-	}
-
-	if !WitnessContinuityCheck(ceremony, updatedCeremony) {
-		t.Fatal("continuity check failed")
-	}
-
-	if !VerifyPairing(updatedCeremony) {
-		t.Fatal("Pairing check failed")
-	}
-	checkLength(ceremony, updatedCeremony)
-}
-
-func checkLength(prev, next *Ceremony) {
-	for i, t := range prev.Transcripts {
-		if len(t.Witness.PotPubkeys) != len(next.Transcripts[i].Witness.PotPubkeys)+1 {
-			panic("invalid pot pubkeys")
-		}
-
+	if err := VerifySubmission(ceremony, updatedCeremony); err != nil {
+		t.Fatal(err)
 	}
 }
 

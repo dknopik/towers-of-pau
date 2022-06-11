@@ -30,25 +30,42 @@ func UpdateTranscript(ceremony *Ceremony) error {
 }
 
 func VerifySubmission(prevCeremony, newCeremony *Ceremony) error {
-	if !SubgroupChecksCoordinator(newCeremony) {
-		return errors.New("subgroup check failed")
+	if err := checkLength(prevCeremony, newCeremony); err != nil {
+		return err
 	}
 
 	if !NonZeroCheck(newCeremony) {
 		return errors.New("nonZero check failed")
 	}
 
+	if !SubgroupChecksCoordinator(newCeremony) {
+		return errors.New("subgroup check failed")
+	}
+
 	if !WitnessContinuityCheck(prevCeremony, newCeremony) {
 		return errors.New("continuity check failed")
 	}
+
 	/*
 		// TODO enable when better initial ceremony is available
-		if !PubkeyUniquenessCheck(ceremony) {
-			t.Fatal("Pubkey uniqueness check failed")
-		}
-	*/
+		if !PubkeyUniquenessCheck(newCeremony) {
+			return errors.New("pubkey uniqueness check failed")
+		}*/
+
 	if !VerifyPairing(newCeremony) {
 		return errors.New("pairing check failed")
+	}
+	return nil
+}
+
+func checkLength(prev, next *Ceremony) error {
+	for i, t := range prev.Transcripts {
+		if len(t.Witness.PotPubkeys) >= len(next.Transcripts[i].Witness.PotPubkeys) {
+			errors.New("pot_pubkeys did not increase")
+		}
+		if len(t.Witness.RunningProducts) >= len(next.Transcripts[i].Witness.RunningProducts) {
+			errors.New("running_products did not increase")
+		}
 	}
 	return nil
 }
