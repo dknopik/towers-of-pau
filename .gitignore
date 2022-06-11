@@ -15,5 +15,5 @@
 # vendor/
 
 cmd/participant/participant
-
-history
+cmd/coordinator/coordinator
+cmd/coordinator/history
