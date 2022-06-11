@@ -16,6 +16,6 @@ All submissions are published, s.th. participants can make sure that their submi
 ```
 cd cmd/participant
 go build
-./pariticipant https://dknopik.de
+./participant https://dknopik.de
 ```
 You can see your results on https://dknopik.de
