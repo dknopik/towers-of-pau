@@ -28,6 +28,30 @@ func UpdateTranscript(ceremony *Ceremony) error {
 	return nil
 }
 
+func VerifySubmission(prevCeremony, newCeremony *Ceremony) error {
+	if !SubgroupChecksCoordinator(newCeremony) {
+		return errors.New("subgroup check failed")
+	}
+
+	if !NonZeroCheck(newCeremony) {
+		return errors.New("nonZero check failed")
+	}
+
+	if !WitnessContinuityCheck(prevCeremony, newCeremony) {
+		return errors.New("continuity check failed")
+	}
+	/*
+		// TODO enable when better initial ceremony is available
+		if !PubkeyUniquenessCheck(ceremony) {
+			t.Fatal("Pubkey uniqueness check failed")
+		}
+	*/
+	if !VerifyPairing(newCeremony) {
+		return errors.New("pairing check failed")
+	}
+	return nil
+}
+
 // UpdatePowersOfTau updates the powers of tau with a secret
 func UpdatePowersOfTau(transcript *Transcript, secret []byte) error {
 	sec := new(blst.Scalar).Deserialize(secret)

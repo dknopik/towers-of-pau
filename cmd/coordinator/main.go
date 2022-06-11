@@ -2,14 +2,16 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/dknopik/towersofpau"
-	"github.com/gorilla/mux"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dknopik/towersofpau"
+	"github.com/gorilla/mux"
 )
 
 var mutex sync.Mutex
@@ -129,7 +131,27 @@ func retrieveParticipant(rw http.ResponseWriter, req *http.Request) {
 }
 
 func submitCeremony(rw http.ResponseWriter, req *http.Request) {
+	ticket := mux.Vars(req)["ticket"]
+	slot := slotByTicket[ticket]
+	if slot == nil || slot.index < currentSlot {
+		rw.WriteHeader(403)
+		return
+	}
 
+	newCeremony, err := towersofpau.Deserialize(req.Body)
+	if err != nil {
+		rw.WriteHeader(400)
+		return
+	}
+
+	if err := towersofpau.VerifySubmission(ceremony, newCeremony); err != nil {
+		fmt.Println(err)
+		rw.WriteHeader(400)
+		return
+	}
+
+	rw.WriteHeader(200)
+	return
 }
 
 type slot struct {
