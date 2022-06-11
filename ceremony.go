@@ -71,7 +71,7 @@ func createRandom() *big.Int {
 }
 
 // SubgroupChecks verifies that a ceremony looks correctly
-func SubgroupChecksParticipant(ceremony Ceremony) bool {
+func SubgroupChecksParticipant(ceremony *Ceremony) bool {
 	for _, transcript := range ceremony.Transcripts {
 		for _, p := range transcript.PowersOfTau.G1Powers {
 			if !p.ToAffine().InG1() {
@@ -193,6 +193,9 @@ func VerifyPairing(ceremony *Ceremony) bool {
 }
 
 func verifyPairing(pot PowersOfTau) bool {
+	if len(pot.G1Powers) < 2 || len(pot.G2Powers) < 2 {
+		return false
+	}
 
 	g2_0 := pot.G2Powers[0].ToAffine()
 	g2_1 := pot.G2Powers[1].ToAffine()
