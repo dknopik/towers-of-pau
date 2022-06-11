@@ -4,13 +4,14 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/dknopik/towersofpau"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/gorilla/mux"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dknopik/towersofpau"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -18,24 +19,28 @@ const (
 	coordinatorTime     = 120
 	immediateStartDelay = 5
 	pushbackDelay       = 10
+	rounds              = 10
 )
 
-func NewCoordinator(ceremony *towersofpau.Ceremony) *Coordinator {
+func NewCoordinator(initialCeremony *towersofpau.Ceremony) *Coordinator {
+	ceremonies := make([]*towersofpau.Ceremony, 0, rounds)
+	ceremonies = append(ceremonies, initialCeremony)
 	return &Coordinator{
-		mutex:        sync.Mutex{},
 		slotByTicket: make(map[string]*slot),
 		slots:        make([]*slot, 0),
-		currentSlot:  0,
-		ceremony:     ceremony,
+		ceremonies:   ceremonies,
+		maxRounds:    rounds,
 	}
 }
 
 type Coordinator struct {
-	mutex        sync.Mutex
-	slotByTicket map[string]*slot
-	slots        []*slot
-	currentSlot  int
-	ceremony     *towersofpau.Ceremony
+	mutex         sync.Mutex
+	slotByTicket  map[string]*slot
+	slots         []*slot
+	currentSlot   int
+	ceremonies    []*towersofpau.Ceremony
+	ceremonyMutex sync.Mutex
+	maxRounds     int
 }
 
 func (c *Coordinator) RegisterParticipant(rw http.ResponseWriter, req *http.Request) {
@@ -103,7 +108,8 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 			rw.WriteHeader(403)
 			return
 		} else {
-			jsonceremony, err := towersofpau.SerializeJSONCeremony(c.ceremony)
+			ceremony := c.ceremonies[len(c.ceremonies)-1]
+			jsonceremony, err := towersofpau.SerializeJSONCeremony(ceremony)
 			if err != nil {
 				rw.WriteHeader(500)
 				return
@@ -144,15 +150,21 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	if err := towersofpau.VerifySubmission(c.ceremony, newCeremony); err != nil {
+	c.ceremonyMutex.Lock()
+	defer c.ceremonyMutex.Unlock()
+	oldCeremony := c.ceremonies[len(c.ceremonies)-1]
+	if err := towersofpau.VerifySubmission(oldCeremony, newCeremony); err != nil {
 		c.currentSlot++
 		fmt.Println(err)
 		rw.WriteHeader(400)
 		return
 	}
 
-	c.currentSlot++
+	// Ceremony was valid, store it
+	c.ceremonies = append(c.ceremonies, oldCeremony)
 	rw.WriteHeader(200)
+
+	c.currentSlot++
 
 	file, err := os.Create(fmt.Sprintf("history/%d.json", slot.index))
 	if err != nil {
