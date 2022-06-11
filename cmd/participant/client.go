@@ -83,6 +83,10 @@ func (c *Client) GetCeremony() (*Info, error) {
 	if err := json.Unmarshal(responseData, &info); err != nil {
 		return nil, err
 	}
+
+	c.registration.Start = info.Start
+	c.registration.Deadline = info.Deadline
+
 	fmt.Println("Retrieved ceremony")
 	return &info, nil
 }

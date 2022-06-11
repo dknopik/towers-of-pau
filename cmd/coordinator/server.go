@@ -16,7 +16,7 @@ import (
 
 const (
 	participantTime     = 20
-	coordinatorTime     = 120
+	coordinatorTime     = 60
 	immediateStartDelay = 5
 	pushbackDelay       = 10
 	rounds              = 10
@@ -117,11 +117,13 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 			}
 			response.Ceremony = &jsonceremony
 		}
-	} else if c.currentSlot < slot.index && slot.start < time.Now().Unix() {
+	} else if c.currentSlot < slot.index && slot.start <= time.Now().Unix()+1 {
 		for _, slot := range c.slots[c.currentSlot+1:] {
 			slot.start += pushbackDelay
 			slot.deadline += pushbackDelay
 		}
+		response.Start = slot.start
+		response.Deadline = slot.deadline
 	}
 
 	resp, err := json.Marshal(response)

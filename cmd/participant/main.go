@@ -19,19 +19,25 @@ func main() {
 	if err := client.Register(); err != nil {
 		panic(err)
 	}
-	// Retrieve our start time
-	start := client.StartTime()
-	if start == nil {
-		panic("invalid start time")
+
+	var info *Info
+	for info == nil || info.Ceremony == nil {
+		// Retrieve our start time
+		start := client.StartTime()
+		if start == nil {
+			panic("invalid start time")
+		}
+		// Wait for our start time
+		fmt.Printf("Waiting for our start time: %v\n", time.Until(*start))
+		time.Sleep(time.Until(*start))
+		// Get the ceremony
+		var err error
+		info, err = client.GetCeremony()
+		if err != nil {
+			panic(err)
+		}
 	}
-	// Wait for our start time
-	fmt.Printf("Waiting for our start time: %v\n", time.Until(*start))
-	time.Sleep(time.Until(*start))
-	// Get the ceremony
-	info, err := client.GetCeremony()
-	if err != nil {
-		panic(err)
-	}
+
 	ceremony, err := towersofpau.DeserializeJSONCeremony(*info.Ceremony)
 	if err != nil {
 		panic(err)
