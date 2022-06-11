@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/dknopik/towersofpau"
 	"github.com/gorilla/mux"
 	"math/rand"
@@ -124,7 +125,27 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 }
 
 func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) {
+	ticket := mux.Vars(req)["ticket"]
+	slot := c.slotByTicket[ticket]
+	if slot == nil || slot.index < c.currentSlot {
+		rw.WriteHeader(403)
+		return
+	}
 
+	newCeremony, err := towersofpau.Deserialize(req.Body)
+	if err != nil {
+		rw.WriteHeader(400)
+		return
+	}
+
+	if err := towersofpau.VerifySubmission(c.ceremony, newCeremony); err != nil {
+		fmt.Println(err)
+		rw.WriteHeader(400)
+		return
+	}
+
+	rw.WriteHeader(200)
+	return
 }
 
 type slot struct {

@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/dknopik/towersofpau"
-	"github.com/gorilla/mux"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/dknopik/towersofpau"
+	"github.com/gorilla/mux"
 )
 
 func main() {
