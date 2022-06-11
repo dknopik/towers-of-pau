@@ -1,16 +1,17 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/dknopik/towersofpau"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 )
 
@@ -28,7 +29,6 @@ const (
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
 	file, err := os.Open("initialCeremony.json")
 	if err != nil {
 		log.Fatal("unable to open")
@@ -75,14 +75,13 @@ func registerParticipant(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(resp)
 }
 
-const ticketBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-
 func getTicket() string {
 	b := make([]byte, 32)
-	for i := range b {
-		b[i] = ticketBytes[rand.Intn(len(ticketBytes))]
+	l, err := rand.Read(b)
+	if err != nil || l != 32 {
+		panic("invalid randomness")
 	}
-	return string(b)
+	return common.Bytes2Hex(b)
 }
 
 func retrieveParticipant(rw http.ResponseWriter, req *http.Request) {
