@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -125,26 +126,39 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 }
 
 func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) {
+	c.mutex.Lock()
 	ticket := mux.Vars(req)["ticket"]
 	slot := c.slotByTicket[ticket]
 	if slot == nil || slot.index < c.currentSlot {
+		c.mutex.Unlock()
 		rw.WriteHeader(403)
 		return
 	}
+	slot.submitted = true
+	c.mutex.Unlock()
 
 	newCeremony, err := towersofpau.Deserialize(req.Body)
 	if err != nil {
+		c.currentSlot++
 		rw.WriteHeader(400)
 		return
 	}
 
 	if err := towersofpau.VerifySubmission(c.ceremony, newCeremony); err != nil {
+		c.currentSlot++
 		fmt.Println(err)
 		rw.WriteHeader(400)
 		return
 	}
 
+	c.currentSlot++
 	rw.WriteHeader(200)
+
+	file, err := os.Create(fmt.Sprintf("history/%d.json", slot.index))
+	if err != nil {
+		return
+	}
+	towersofpau.Serialize(file, newCeremony)
 	return
 }
 

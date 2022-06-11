@@ -18,6 +18,10 @@ func main() {
 	if err != nil {
 		log.Fatal("unable to decode", err.Error())
 	}
+	err = os.Mkdir("history", os.ModePerm)
+	if err != nil {
+		return
+	}
 	coordinator := NewCoordinator(ceremony)
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/participation", coordinator.RegisterParticipant).
