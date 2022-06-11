@@ -10,7 +10,11 @@ import (
 )
 
 func main() {
-	file, err := os.Open("initialCeremony.json")
+	if len(os.Args) < 2 {
+		panic("invalid amount of args, need 2")
+	}
+	path := os.Args[1]
+	file, err := os.Open(path)
 	if err != nil {
 		log.Fatal("unable to open")
 	}

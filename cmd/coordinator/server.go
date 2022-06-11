@@ -132,6 +132,7 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 }
 
 func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) {
+	fmt.Println("Received Submission")
 	c.mutex.Lock()
 	ticket := mux.Vars(req)["ticket"]
 	slot := c.slotByTicket[ticket]
@@ -153,13 +154,14 @@ func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) 
 	c.ceremonyMutex.Lock()
 	defer c.ceremonyMutex.Unlock()
 	oldCeremony := c.ceremonies[len(c.ceremonies)-1]
+	fmt.Println("Verifying submission")
 	if err := towersofpau.VerifySubmission(oldCeremony, newCeremony); err != nil {
 		c.currentSlot++
 		fmt.Println(err)
 		rw.WriteHeader(400)
 		return
 	}
-
+	fmt.Println("Submission verified successfully")
 	// Ceremony was valid, store it
 	c.ceremonies = append(c.ceremonies, oldCeremony)
 	rw.WriteHeader(200)

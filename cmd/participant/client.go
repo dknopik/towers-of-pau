@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,8 +25,8 @@ type Client struct {
 }
 
 type registration struct {
-	Start    time.Time
-	Deadline time.Time
+	Start    int
+	Deadline int
 	Ticket   string
 }
 
@@ -33,10 +34,12 @@ func (c *Client) StartTime() *time.Time {
 	if c.registration == nil {
 		return nil
 	}
-	return &c.registration.Start
+	t := time.Unix(int64(c.registration.Start), 0)
+	return &t
 }
 
 func (c *Client) Register() error {
+	fmt.Println("Registering for ceremony")
 	url := fmt.Sprintf("%v/%v", c.url, "participation")
 	var body io.Reader
 	resp, err := http.Post(url, "text/html; charset=UTF-8", body)
@@ -47,21 +50,23 @@ func (c *Client) Register() error {
 	if err != nil {
 		return err
 	}
-	var part *registration
-	if err := json.Unmarshal(responseData, part); err != nil {
+	var part registration
+	if err := json.Unmarshal(responseData, &part); err != nil {
 		return err
 	}
-	c.registration = part
+	c.registration = &part
+	fmt.Printf("Registered for ceremony at time %v\n", part.Start)
 	return nil
 }
 
 type Info struct {
-	Start    time.Time
-	Deadline time.Time
-	Ceremony *towersofpau.Ceremony
+	Start    int
+	Deadline int
+	Ceremony *towersofpau.JSONCeremony
 }
 
 func (c *Client) GetCeremony() (*Info, error) {
+	fmt.Println("Fetching Ceremony")
 	if c.registration == nil {
 		return nil, errors.New("no registration available")
 	}
@@ -74,23 +79,33 @@ func (c *Client) GetCeremony() (*Info, error) {
 	if err != nil {
 		return nil, err
 	}
-	var info *Info
-	return info, json.Unmarshal(responseData, info)
+	var info Info
+	if err := json.Unmarshal(responseData, &info); err != nil {
+		return nil, err
+	}
+	fmt.Println("Retrieved ceremony")
+	return &info, nil
 }
 
 func (c *Client) SubmitCeremony(ceremony *towersofpau.Ceremony) error {
+	fmt.Println("Submitting ceremony")
 	if c.registration == nil {
 		return errors.New("no registration available")
 	}
 	url := fmt.Sprintf("%v/%v/%v", c.url, "participation", c.registration.Ticket)
 	reader, writer := io.Pipe()
-	towersofpau.Serialize(writer, ceremony)
-	resp, err := http.Post(url, "text/html; charset=UTF-8", reader)
+	rw := bufio.NewReadWriter(bufio.NewReader(reader), bufio.NewWriter(writer))
+	go func() {
+		towersofpau.Serialize(rw, ceremony)
+	}()
+
+	resp, err := http.Post(url, "text/html; charset=UTF-8", rw)
 	if err != nil {
 		return err
 	}
 	switch resp.StatusCode {
 	case 200:
+		fmt.Println("Submitted ceremony successfully")
 		return nil
 	case 400:
 		return errors.New("invalid ceremony")
