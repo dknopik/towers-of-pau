@@ -107,6 +107,10 @@ func Deserialize(reader io.Reader) (*Ceremony, error) {
 	if err != nil {
 		return nil, err
 	}
+	return DeserializeJSONCeremony(jsonceremony)
+}
+
+func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
 	ceremony := Ceremony{
 		make([]*Transcript, 0, len(jsonceremony.Transcripts)),
 	}
@@ -185,6 +189,19 @@ func Deserialize(reader io.Reader) (*Ceremony, error) {
 }
 
 func Serialize(writer io.Writer, ceremony *Ceremony) error {
+	jsonceremony, err := SerializeJSONCeremony(ceremony)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(writer)
+	err = encoder.Encode(jsonceremony)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SerializeJSONCeremony(ceremony *Ceremony) (JSONCeremony, error) {
 	jsonceremony := JSONCeremony{
 		make([]JSONTranscript, 0, len(ceremony.Transcripts)),
 	}
@@ -220,10 +237,5 @@ func Serialize(writer io.Writer, ceremony *Ceremony) error {
 
 		jsonceremony.Transcripts = append(jsonceremony.Transcripts, jsontranscript)
 	}
-	encoder := json.NewEncoder(writer)
-	err := encoder.Encode(jsonceremony)
-	if err != nil {
-		return err
-	}
-	return nil
+	return jsonceremony, nil
 }
