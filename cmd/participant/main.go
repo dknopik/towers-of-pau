@@ -2,14 +2,17 @@ package main
 
 import (
 	"errors"
-	"io"
+	"os"
 	"time"
 
 	"github.com/dknopik/towersofpau"
 )
 
 func main() {
-	url := "1234"
+	if len(os.Args) < 2 {
+		panic("invalid amount of args, need 2")
+	}
+	url := os.Args[1]
 	client := NewClient(url)
 	// Register with the coordinator
 	if err := client.Register(); err != nil {
@@ -45,24 +48,4 @@ func participate(ceremony *towersofpau.Ceremony) error {
 	}
 	// Add our contribution
 	return towersofpau.UpdateTranscript(ceremony)
-}
-
-func createReply(reader io.Reader, writer io.Writer) error {
-	// Deserialize the ceremony
-	ceremony, err := towersofpau.Deserialize(reader)
-	if err != nil {
-		return err
-	}
-	// Verify the data
-	if !towersofpau.SubgroupChecksParticipant(ceremony) {
-		return errors.New("subgroup check failed")
-	}
-	// Add our contribution
-	if err := towersofpau.UpdateTranscript(ceremony); err != nil {
-		return err
-	}
-	if err := towersofpau.Serialize(writer, ceremony); err != nil {
-		return err
-	}
-	return nil
 }
