@@ -1,11 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/dknopik/towersofpau"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -61,14 +62,13 @@ func (c *Coordinator) RegisterParticipant(rw http.ResponseWriter, req *http.Requ
 	rw.Write(resp)
 }
 
-const ticketBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-
 func getTicket() string {
 	b := make([]byte, 32)
-	for i := range b {
-		b[i] = ticketBytes[rand.Intn(len(ticketBytes))]
+	l, err := rand.Read(b)
+	if err != nil || l != 32 {
+		panic("invalid randomness")
 	}
-	return string(b)
+	return common.Bytes2Hex(b)
 }
 
 func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Request) {
