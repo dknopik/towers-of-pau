@@ -124,7 +124,7 @@ func UpdatePowersOfTauFast(transcript *Transcript, secret []byte) error {
 
 // UpdateWitness updates the witness with our secret.
 func UpdateWitness(transcript *Transcript, secret []byte) error {
-	newProduct := transcript.Witness.RunningProducts[len(transcript.Witness.RunningProducts)-1]
+	newProduct := &(*transcript.Witness.RunningProducts[len(transcript.Witness.RunningProducts)-1])
 	sec := new(blst.Scalar).Deserialize(secret)
 	if sec == nil {
 		return errors.New("invalid secret")
@@ -208,6 +208,7 @@ func NonZeroCheck(ceremony *Ceremony) bool {
 	for _, transcript := range ceremony.Transcripts {
 		for _, p := range transcript.Witness.RunningProducts {
 			_ = p
+			// TODO reenable this check1
 			// if !p.IsInfinite() { return false}
 		}
 	}
@@ -293,8 +294,8 @@ func verifyPairing(t *Transcript) bool {
 		wg     = new(sync.WaitGroup)
 	)
 
+	wg.Add(len(t.PowersOfTau.G1Powers) - 1)
 	for i := 0; i < len(t.PowersOfTau.G1Powers)-1; i++ {
-		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			pair1 := blst.Fp12MillerLoop(g2_1, t.PowersOfTau.G1Powers[i].ToAffine())
@@ -305,9 +306,10 @@ func verifyPairing(t *Transcript) bool {
 			}
 		}(i)
 	}
+	wg.Wait()
 
+	wg.Add(len(t.PowersOfTau.G2Powers) - 1)
 	for i := 0; i < len(t.PowersOfTau.G2Powers)-1; i++ {
-		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			pair1 := blst.Fp12MillerLoop(t.PowersOfTau.G2Powers[i].ToAffine(), g1_1)
@@ -318,20 +320,21 @@ func verifyPairing(t *Transcript) bool {
 			}
 		}(i)
 	}
+	wg.Wait()
 
+	p2_g := blst.P2Generator().ToAffine()
+	wg.Add(len(t.Witness.RunningProducts) - 1)
 	for i := 0; i < len(t.Witness.RunningProducts)-1; i++ {
-		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			pair1 := blst.Fp12MillerLoop(&t.Witness.PotPubkeys[i+1], t.Witness.RunningProducts[i].ToAffine())
-			pair2 := blst.Fp12MillerLoop(g2_1, t.Witness.RunningProducts[i+1].ToAffine())
+			pair2 := blst.Fp12MillerLoop(p2_g, t.Witness.RunningProducts[i+1].ToAffine())
 
 			if !blst.Fp12FinalVerify(pair1, pair2) {
 				atomic.AddInt32(&failed, 1)
 			}
 		}(i)
 	}
-
 	wg.Wait()
 	return failed == 0
 }

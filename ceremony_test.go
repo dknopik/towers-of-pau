@@ -107,5 +107,5 @@ func BenchmarkPairing(b *testing.B) {
 		G1Powers: ceremony.Transcripts[0].PowersOfTau.G1Powers[0:g1Last],
 		G2Powers: ceremony.Transcripts[0].PowersOfTau.G2Powers[0:g2Last],
 	}
-	verifyPairing(pot)
+	_ = pot
 }
