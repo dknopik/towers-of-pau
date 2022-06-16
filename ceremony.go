@@ -9,8 +9,12 @@ import (
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/bls12381"
 	blst "github.com/supranational/blst/bindings/go"
 )
+
+var G1 *bls12381.G1
+var G2 *bls12381.G2
 
 // UpdateTranscript adds our contribution to the ceremony
 func UpdateTranscript(ceremony *Ceremony) error {
@@ -72,7 +76,7 @@ func checkLength(prev, next *Ceremony) error {
 
 // UpdatePowersOfTau updates the powers of tau with a secret
 func UpdatePowersOfTau(transcript *Transcript, secret []byte) error {
-	sec := new(blst.Scalar).Deserialize(secret)
+	sec := G1.MulScalar(nil, G1.One(), new(big.Int).SetBytes(secret))
 	if sec == nil {
 		return errors.New("invalid secret")
 	}
