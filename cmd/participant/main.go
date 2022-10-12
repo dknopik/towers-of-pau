@@ -11,7 +11,8 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		panic("invalid amount of args, need 2")
+		//panic("invalid amount of args, need 2")
+		os.Args = append(os.Args, "http://localhost:8080")
 	}
 	url := os.Args[1]
 	client := NewClient(url)
@@ -38,7 +39,9 @@ func main() {
 		}
 	}
 
+	start := time.Now()
 	ceremony, err := towersofpau.DeserializeJSONCeremony(*info.Ceremony)
+	fmt.Printf("Contribution deserialized in %v\n", time.Since(start))
 	if err != nil {
 		panic(err)
 	}

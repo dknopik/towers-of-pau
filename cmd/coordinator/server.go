@@ -44,6 +44,8 @@ type Coordinator struct {
 func (c *Coordinator) RegisterParticipant(rw http.ResponseWriter, req *http.Request) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+	setupResponse(&rw, req)
+
 	slot := new(slot)
 	slot.index = len(c.slots)
 	// check if current slot has expired or is in processing
@@ -91,6 +93,8 @@ func getTicket() string {
 func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Request) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	setupResponse(&rw, req)
 	ticket := mux.Vars(req)["ticket"]
 	slot := c.slotByTicket[ticket]
 	if slot == nil || slot.index < c.currentSlot {
@@ -146,6 +150,7 @@ func (c *Coordinator) RetrieveParticipant(rw http.ResponseWriter, req *http.Requ
 
 func (c *Coordinator) SubmitCeremony(rw http.ResponseWriter, req *http.Request) {
 	c.mutex.Lock()
+	setupResponse(&rw, req)
 	ticket := mux.Vars(req)["ticket"]
 	slot := c.slotByTicket[ticket]
 	if slot == nil || slot.index != c.currentSlot {
@@ -196,4 +201,10 @@ type slot struct {
 	deadline          int64
 	participantTicket string
 	submitted         bool
+}
+
+func setupResponse(w *http.ResponseWriter, req *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 }

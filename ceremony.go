@@ -9,12 +9,11 @@ import (
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto/bls12381"
-	blst "github.com/supranational/blst/bindings/go"
+	bls12381 "github.com/kilic/bls12-381"
 )
 
-var G1 *bls12381.G1
-var G2 *bls12381.G2
+var G1 = bls12381.NewG1()
+var G2 = bls12381.NewG2()
 
 // UpdateTranscript adds our contribution to the ceremony
 func UpdateTranscript(ceremony *Ceremony) error {
@@ -76,39 +75,25 @@ func checkLength(prev, next *Ceremony) error {
 
 // UpdatePowersOfTau updates the powers of tau with a secret
 func UpdatePowersOfTau(transcript *Transcript, secret []byte) error {
-	sec := G1.MulScalar(nil, G1.One(), new(big.Int).SetBytes(secret))
-	if sec == nil {
-		return errors.New("invalid secret")
-	}
+	sec := bls12381.NewFr().FromBytes(secret)
 	scalar := &(*sec)
 	for i := 0; i < transcript.NumG1Powers; i++ {
-		transcript.PowersOfTau.G1Powers[i] = transcript.PowersOfTau.G1Powers[i].Mult(scalar)
+		G1.MulScalar(transcript.PowersOfTau.G1Powers[i], transcript.PowersOfTau.G1Powers[i], scalar)
 		if i < transcript.NumG2Powers {
-			transcript.PowersOfTau.G2Powers[i] = transcript.PowersOfTau.G2Powers[i].Mult(scalar)
+			G2.MulScalar(transcript.PowersOfTau.G2Powers[i], transcript.PowersOfTau.G2Powers[i], scalar)
 		}
-		var ok bool
-		scalar, ok = scalar.Mul(sec)
-		if !ok {
-			return errors.New("Scalar mult returned false")
-		}
+		scalar.Mul(scalar, sec)
 	}
 	return nil
 }
 
 func UpdatePowersOfTauFast(transcript *Transcript, secret []byte) error {
-	sec := new(blst.Scalar).Deserialize(secret)
-	if sec == nil {
-		return errors.New("invalid secret")
-	}
+	sec := bls12381.NewFr().FromBytes(secret)
 	scalar := &(*sec)
-	scalars := make([]*blst.Scalar, transcript.NumG1Powers)
+	scalars := make([]*bls12381.Fr, transcript.NumG1Powers)
 	for i := 0; i < transcript.NumG1Powers; i++ {
 		scalars[i] = &(*scalar)
-		var ok bool
-		scalar, ok = scalar.Mul(sec)
-		if !ok {
-			panic("Scalar mult returned false")
-		}
+		scalar.Mul(scalar, sec)
 	}
 
 	wg := new(sync.WaitGroup)
@@ -116,9 +101,9 @@ func UpdatePowersOfTauFast(transcript *Transcript, secret []byte) error {
 	for i := 0; i < transcript.NumG1Powers; i++ {
 		go func(i int) {
 			defer wg.Done()
-			transcript.PowersOfTau.G1Powers[i] = transcript.PowersOfTau.G1Powers[i].Mult(scalars[i])
+			G1.MulScalar(transcript.PowersOfTau.G1Powers[i], transcript.PowersOfTau.G1Powers[i], scalar)
 			if i < transcript.NumG2Powers {
-				transcript.PowersOfTau.G2Powers[i] = transcript.PowersOfTau.G2Powers[i].Mult(scalars[i])
+				G2.MulScalar(transcript.PowersOfTau.G2Powers[i], transcript.PowersOfTau.G2Powers[i], scalar)
 			}
 		}(i)
 	}
@@ -129,17 +114,15 @@ func UpdatePowersOfTauFast(transcript *Transcript, secret []byte) error {
 // UpdateWitness updates the witness with our secret.
 func UpdateWitness(transcript *Transcript, secret []byte) error {
 	newProduct := &(*transcript.Witness.RunningProducts[len(transcript.Witness.RunningProducts)-1])
-	sec := new(blst.Scalar).Deserialize(secret)
-	if sec == nil {
-		return errors.New("invalid secret")
-	}
-	newProduct = newProduct.Mult(sec)
+	sec := bls12381.NewFr().FromBytes(secret)
+	G1.MulScalar(newProduct, newProduct, sec)
 	transcript.Witness.RunningProducts = append(transcript.Witness.RunningProducts, newProduct)
-	newPk := new(blst.P2Affine).From(sec)
+	newPk := G2.New()
+	G2.MulScalar(newPk, &bls12381.G2One, sec)
 	if newPk == nil {
 		return errors.New("invalid pk")
 	}
-	transcript.Witness.PotPubkeys = append(transcript.Witness.PotPubkeys, *newPk)
+	transcript.Witness.PotPubkeys = append(transcript.Witness.PotPubkeys, newPk)
 	return nil
 }
 
@@ -150,10 +133,9 @@ func createRandom() *big.Int {
 		if err != nil || n != 32 {
 			panic("could not get good randomness")
 		}
-		sec := new(blst.Scalar).Deserialize(b)
-		if sec != nil {
-			return new(big.Int).SetBytes(b)
-		}
+
+		return new(big.Int).SetBytes(b)
+
 	}
 	panic("could not find secret in 1 million tries")
 }
@@ -162,17 +144,17 @@ func createRandom() *big.Int {
 func SubgroupChecksParticipant(ceremony *Ceremony) bool {
 	for _, transcript := range ceremony.Transcripts {
 		for _, p := range transcript.PowersOfTau.G1Powers {
-			if !p.ToAffine().InG1() {
+			if !G1.IsOnCurve(p) {
 				return false
 			}
 		}
 		for _, p := range transcript.PowersOfTau.G2Powers {
-			if !p.ToAffine().InG2() {
+			if !G2.IsOnCurve(p) {
 				return false
 			}
 		}
 		for _, p := range transcript.Witness.RunningProducts {
-			if !p.ToAffine().InG1() {
+			if !G1.IsOnCurve(p) {
 				return false
 			}
 		}
@@ -184,22 +166,22 @@ func SubgroupChecksParticipant(ceremony *Ceremony) bool {
 func SubgroupChecksCoordinator(ceremony *Ceremony) bool {
 	for _, transcript := range ceremony.Transcripts {
 		for _, p := range transcript.PowersOfTau.G1Powers {
-			if !p.ToAffine().InG1() {
+			if !G1.IsOnCurve(p) {
 				return false
 			}
 		}
 		for _, p := range transcript.PowersOfTau.G2Powers {
-			if !p.ToAffine().InG2() {
+			if !G2.IsOnCurve(p) {
 				return false
 			}
 		}
 		for _, p := range transcript.Witness.RunningProducts {
-			if !p.ToAffine().InG1() {
+			if !G1.IsOnCurve(p) {
 				return false
 			}
 		}
 		for _, p := range transcript.Witness.PotPubkeys {
-			if !p.InG2() {
+			if !G2.IsOnCurve(p) {
 				return false
 			}
 		}
@@ -220,7 +202,7 @@ func NonZeroCheck(ceremony *Ceremony) bool {
 }
 
 func PubkeyUniquenessCheck(ceremony *Ceremony) bool {
-	keys := make(map[blst.P2Affine]struct{}, 0)
+	keys := make(map[*bls12381.PointG2]struct{}, 0)
 	var numKeys int
 	for _, transcript := range ceremony.Transcripts {
 		for _, key := range transcript.Witness.PotPubkeys {
@@ -248,24 +230,24 @@ func WitnessContinuityCheck(prevCeremony, newCeremony *Ceremony) bool {
 	return true
 }
 
-func p1ArrayEquals(p1, p2 []*blst.P1) bool {
+func p1ArrayEquals(p1, p2 []*bls12381.PointG1) bool {
 	if len(p1) != len(p2) {
 		return false
 	}
 	for idx := range p1 {
-		if !p1[idx].Equals(p2[idx]) {
+		if !G1.Equal(p1[idx], p2[idx]) {
 			return false
 		}
 	}
 	return true
 }
 
-func p2ArrayEquals(p1, p2 blst.P2Affines) bool {
+func p2ArrayEquals(p1, p2 []*bls12381.PointG2) bool {
 	if len(p1) != len(p2) {
 		return false
 	}
 	for idx := range p1 {
-		if !p1[idx].Equals(&p2[idx]) {
+		if !G2.Equal(p1[idx], p2[idx]) {
 			return false
 		}
 	}
@@ -288,11 +270,11 @@ func verifyPairing(t *Transcript) bool {
 	}
 
 	var (
-		g2_0 = t.PowersOfTau.G2Powers[0].ToAffine()
-		g2_1 = t.PowersOfTau.G2Powers[1].ToAffine()
+		g2_0 = t.PowersOfTau.G2Powers[0]
+		g2_1 = t.PowersOfTau.G2Powers[1]
 
-		g1_0 = t.PowersOfTau.G1Powers[0].ToAffine()
-		g1_1 = t.PowersOfTau.G1Powers[1].ToAffine()
+		g1_0 = t.PowersOfTau.G1Powers[0]
+		g1_1 = t.PowersOfTau.G1Powers[1]
 
 		failed int32
 		wg     = new(sync.WaitGroup)
@@ -302,10 +284,10 @@ func verifyPairing(t *Transcript) bool {
 	for i := 0; i < len(t.PowersOfTau.G1Powers)-1; i++ {
 		go func(i int) {
 			defer wg.Done()
-			pair1 := blst.Fp12MillerLoop(g2_1, t.PowersOfTau.G1Powers[i].ToAffine())
-			pair2 := blst.Fp12MillerLoop(g2_0, t.PowersOfTau.G1Powers[i+1].ToAffine())
-
-			if !blst.Fp12FinalVerify(pair1, pair2) {
+			engine := bls12381.NewEngine()
+			engine.AddPair(t.PowersOfTau.G1Powers[i], g2_1)
+			engine.AddPair(t.PowersOfTau.G1Powers[i+1], g2_0)
+			if !engine.Check() {
 				atomic.AddInt32(&failed, 1)
 			}
 		}(i)
@@ -316,25 +298,25 @@ func verifyPairing(t *Transcript) bool {
 	for i := 0; i < len(t.PowersOfTau.G2Powers)-1; i++ {
 		go func(i int) {
 			defer wg.Done()
-			pair1 := blst.Fp12MillerLoop(t.PowersOfTau.G2Powers[i].ToAffine(), g1_1)
-			pair2 := blst.Fp12MillerLoop(t.PowersOfTau.G2Powers[i+1].ToAffine(), g1_0)
-
-			if !blst.Fp12FinalVerify(pair1, pair2) {
+			engine := bls12381.NewEngine()
+			engine.AddPair(g1_1, t.PowersOfTau.G2Powers[i])
+			engine.AddPair(g1_0, t.PowersOfTau.G2Powers[i+1])
+			if !engine.Check() {
 				atomic.AddInt32(&failed, 1)
 			}
 		}(i)
 	}
 	wg.Wait()
 
-	p2_g := blst.P2Generator().ToAffine()
+	p2_g := G2.One()
 	wg.Add(len(t.Witness.RunningProducts) - 1)
 	for i := 0; i < len(t.Witness.RunningProducts)-1; i++ {
 		go func(i int) {
 			defer wg.Done()
-			pair1 := blst.Fp12MillerLoop(&t.Witness.PotPubkeys[i+1], t.Witness.RunningProducts[i].ToAffine())
-			pair2 := blst.Fp12MillerLoop(p2_g, t.Witness.RunningProducts[i+1].ToAffine())
-
-			if !blst.Fp12FinalVerify(pair1, pair2) {
+			engine := bls12381.NewEngine()
+			engine.AddPair(t.Witness.RunningProducts[i], t.Witness.PotPubkeys[i+1])
+			engine.AddPair(t.Witness.RunningProducts[i+1], p2_g)
+			if !engine.Check() {
 				atomic.AddInt32(&failed, 1)
 			}
 		}(i)
