@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/crypto/bls12381"
+	bls12381 "github.com/kilic/bls12-381"
 )
 
 type PowersOfTau struct {
@@ -138,7 +138,7 @@ func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
 			if err != nil {
 				return nil, err
 			}
-			res, err := G1.FromBytes(dec)
+			res, err := bls12381.NewG1().FromCompressed(dec)
 			if err != nil {
 				return nil, err
 			}
@@ -151,7 +151,7 @@ func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
 			if err != nil {
 				return nil, err
 			}
-			res, err := G2.FromBytes(dec)
+			res, err := bls12381.NewG2().FromCompressed(dec)
 			if err != nil {
 				return nil, err
 			}
@@ -164,7 +164,7 @@ func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
 			if err != nil {
 				return nil, err
 			}
-			res, err := G1.FromBytes(dec)
+			res, err := bls12381.NewG1().FromCompressed(dec)
 			if err != nil {
 				return nil, err
 			}
@@ -172,12 +172,12 @@ func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
 		}
 
 		for i, power := range jsontranscript.Witness.PotPubkeys {
-			dec := make([]byte, 48)
+			dec := make([]byte, 96)
 			_, err := hex.Decode(dec, []byte(strings.TrimPrefix(power, "0x")))
 			if err != nil {
 				return nil, err
 			}
-			res, err := G2.FromBytes(dec)
+			res, err := bls12381.NewG2().FromCompressed(dec)
 			if err != nil {
 				return nil, err
 			}
@@ -221,19 +221,19 @@ func SerializeJSONCeremony(ceremony *Ceremony) (JSONCeremony, error) {
 		}
 
 		for i, point := range transcript.PowersOfTau.G1Powers {
-			jsontranscript.PowersOfTau.G1Powers[i] = "0x" + hex.EncodeToString(G1.ToBytes(point))
+			jsontranscript.PowersOfTau.G1Powers[i] = "0x" + hex.EncodeToString(G1.ToCompressed(point))
 		}
 
 		for i, point := range transcript.PowersOfTau.G2Powers {
-			jsontranscript.PowersOfTau.G2Powers[i] = "0x" + hex.EncodeToString(G2.ToBytes(point))
+			jsontranscript.PowersOfTau.G2Powers[i] = "0x" + hex.EncodeToString(G2.ToCompressed(point))
 		}
 
 		for i, point := range transcript.Witness.RunningProducts {
-			jsontranscript.Witness.RunningProducts[i] = "0x" + hex.EncodeToString(G1.ToBytes(point))
+			jsontranscript.Witness.RunningProducts[i] = "0x" + hex.EncodeToString(G1.ToCompressed(point))
 		}
 
 		for i, point := range transcript.Witness.PotPubkeys {
-			jsontranscript.Witness.PotPubkeys[i] = "0x" + hex.EncodeToString(G2.ToBytes(point))
+			jsontranscript.Witness.PotPubkeys[i] = "0x" + hex.EncodeToString(G2.ToCompressed(point))
 		}
 
 		jsonceremony.Transcripts = append(jsonceremony.Transcripts, jsontranscript)

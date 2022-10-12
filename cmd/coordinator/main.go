@@ -37,7 +37,7 @@ func main() {
 		Methods("GET")
 	router.HandleFunc("/participation/{ticket}", coordinator.SubmitCeremony).
 		Methods("POST")
-	err = http.ListenAndServe(":2016", router)
+	err = http.ListenAndServe(":8080", router)
 	if err != nil {
 		log.Fatal(err)
 	}
