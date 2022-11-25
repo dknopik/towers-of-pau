@@ -57,10 +57,15 @@ func (c *Client) GetCurrentState() (*towersofpau.Ceremony, error) {
 
 func (c *Client) Contribute(ceremony *towersofpau.Ceremony) error {
 	url := fmt.Sprintf("%v/%v", c.url, "contribute")
-
 	buf := new(bytes.Buffer)
 	towersofpau.Serialize(buf, ceremony)
-	resp, err := http.Post(url, "text/html", buf)
+
+	request, err := http.NewRequest("POST", url, buf)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Authorization", "Bearer "+c.sessionID)
+	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return err
 	}

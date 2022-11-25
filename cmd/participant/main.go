@@ -16,12 +16,22 @@ func main() {
 	url := os.Args[1]
 	client := NewClient(url)
 
-	if err := client.Login(); err != nil {
+	// start the login process
+	go func() {
+		if err := client.Login(); err != nil {
+			panic(err)
+		}
+	}()
+
+	if err := runParticipation(client); err != nil {
 		panic(err)
 	}
 }
 
 func runParticipation(client *Client) error {
+	// Wait for our sessionID
+	client.WaitForSessionID()
+
 	// Register with the coordinator
 	status, err := client.GetStatus()
 	if err != nil {

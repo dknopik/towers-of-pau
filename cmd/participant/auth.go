@@ -68,20 +68,12 @@ func (c *Client) RequestAuthLink() (*AuthLinks, error) {
 
 func (c *Client) handleCallback(rw http.ResponseWriter, req *http.Request) {
 	fmt.Println("Received callback")
-
-	// session_id=2a895300-769c-41ef-9cae-f73220273525&
-	//sub=eth%7C0xb02a2eda1b317fbd16760128836b0ac59b560e9d&
-	//nickname=0xb02a2eda1b317fbd16760128836b0ac59b560e9d&
-	//provider=Ethereum&
-	//exp=18446744073709551615
 	sessionid := req.URL.Query().Get("session_id")
 	if sessionid == "" {
 		panic(fmt.Errorf("invalid query params %v", req.URL.Query().Encode()))
 	}
-	c.sessionID = sessionid
-	if err := runParticipation(c); err != nil {
-		panic(err)
-	}
+	c.sessionCh <- sessionid
+
 }
 
 func startSIWEServer(client *Client) error {
