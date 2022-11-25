@@ -3,6 +3,7 @@ package towersofpau
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	"io"
 	"strings"
@@ -84,6 +85,7 @@ type JSONPowersOfTau struct {
 type JSONWitness struct {
 	RunningProducts []string `json:"runningProducts"`
 	PotPubkeys      []string `json:"potPubkeys"`
+	BLSSignatures   []string `json:"blsSignatures"`
 }
 
 type JSONTranscript struct {
@@ -94,19 +96,19 @@ type JSONTranscript struct {
 }
 
 type JSONCeremony struct {
-	Transcripts []JSONTranscript `json:"transcripts"`
+	Transcripts                []JSONTranscript `json:"transcripts"`
+	ParticipantIDs             []string         `json:"participantIds"`
+	ParticipantEcdsaSignatures []string         `json:"participantEcdsaSignatures"`
 }
 
 func Deserialize(reader io.Reader) (*Ceremony, error) {
 	decoder := json.NewDecoder(reader)
 	decoder.DisallowUnknownFields()
-	jsonceremony := JSONCeremony{
-		[]JSONTranscript{},
-	}
-	err := decoder.Decode(&jsonceremony)
-	if err != nil {
+	var jsonceremony JSONCeremony
+	if err := decoder.Decode(&jsonceremony); err != nil {
 		return nil, err
 	}
+	fmt.Println("asdf")
 	return DeserializeJSONCeremony(jsonceremony)
 }
 
@@ -204,6 +206,8 @@ func Serialize(writer io.Writer, ceremony *Ceremony) error {
 func SerializeJSONCeremony(ceremony *Ceremony) (JSONCeremony, error) {
 	jsonceremony := JSONCeremony{
 		make([]JSONTranscript, 0, len(ceremony.Transcripts)),
+		make([]string, 0),
+		make([]string, 0),
 	}
 	for _, transcript := range ceremony.Transcripts {
 		jsontranscript := JSONTranscript{

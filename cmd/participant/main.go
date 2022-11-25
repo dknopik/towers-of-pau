@@ -15,43 +15,75 @@ func main() {
 	}
 	url := os.Args[1]
 	client := NewClient(url)
-	// Register with the coordinator
-	if err := client.Register(); err != nil {
+
+	if err := client.Login(); err != nil {
 		panic(err)
 	}
+}
 
-	var info *Info
-	for info == nil || info.Ceremony == nil {
-		// Retrieve our start time
-		start := client.StartTime()
-		if start == nil {
-			panic("invalid start time")
-		}
-		// Wait for our start time
-		fmt.Printf("Waiting for our start time: %v\n", time.Until(*start))
-		time.Sleep(time.Until(*start))
-		// Get the ceremony
-		var err error
-		info, err = client.GetCeremony()
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	ceremony, err := towersofpau.DeserializeJSONCeremony(*info.Ceremony)
+func runParticipation(client *Client) error {
+	// Register with the coordinator
+	status, err := client.GetStatus()
 	if err != nil {
 		panic(err)
 	}
 
-	// Participate
+	fmt.Printf("%v\n", status)
+
+	ceremony, err := client.GetCurrentState()
+	if err != nil {
+		return err
+	}
+
 	newCeremony := ceremony.Copy()
+
 	if err := participate(newCeremony); err != nil {
-		panic(err)
+		return err
 	}
-	// Send reply
-	if err := client.SubmitCeremony(newCeremony); err != nil {
-		panic(err)
+
+	if err := towersofpau.VerifySubmission(ceremony, newCeremony); err != nil {
+		return err
 	}
+
+	if err := client.TryContribute(); err != nil {
+		return err
+	}
+	/*
+		var info *Info
+		for info == nil || info.Ceremony == nil {
+			// Retrieve our start time
+			start := client.StartTime()
+			if start == nil {
+				panic("invalid start time")
+			}
+			// Wait for our start time
+			fmt.Printf("Waiting for our start time: %v\n", time.Until(*start))
+			time.Sleep(time.Until(*start))
+			// Get the ceremony
+			var err error
+			info, err = client.GetCeremony()
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		ceremony, err := towersofpau.DeserializeJSONCeremony(*info.Ceremony)
+		if err != nil {
+			panic(err)
+		}
+
+		// Participate
+		newCeremony := ceremony.Copy()
+		if err := participate(newCeremony); err != nil {
+			panic(err)
+		}
+		// Send reply
+		if err := client.SubmitCeremony(newCeremony); err != nil {
+			panic(err)
+		}
+	*/
+	close(client.closeCh)
+	return nil
 }
 
 func participate(ceremony *towersofpau.Ceremony) error {

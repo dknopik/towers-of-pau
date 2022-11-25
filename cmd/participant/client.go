@@ -15,13 +15,16 @@ import (
 
 func NewClient(url string) *Client {
 	return &Client{
-		url: url,
+		url:     url,
+		closeCh: make(chan struct{}),
 	}
 }
 
 type Client struct {
 	url          string
 	registration *registration
+	sessionID    string
+	closeCh      chan struct{}
 }
 
 type registration struct {
@@ -39,7 +42,6 @@ func (c *Client) StartTime() *time.Time {
 }
 
 func (c *Client) Register() error {
-	fmt.Println("Registering for ceremony")
 	url := fmt.Sprintf("%v/%v", c.url, "participation")
 	var body io.Reader
 	resp, err := http.Post(url, "text/html; charset=UTF-8", body)
@@ -50,6 +52,7 @@ func (c *Client) Register() error {
 	if err != nil {
 		return err
 	}
+	fmt.Println(string(responseData))
 	var part registration
 	if err := json.Unmarshal(responseData, &part); err != nil {
 		return err

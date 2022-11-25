@@ -7,9 +7,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/dknopik/towersofpau"
 )
+
+type ErrorStruct struct {
+	Code  string `json:"code"`
+	Error string `json:"error"`
+}
 
 func (c *Client) GetStatus() (*CeremonyStatus, error) {
 	url := fmt.Sprintf("%v/%v/%v", c.url, "info", "status")
@@ -21,6 +27,7 @@ func (c *Client) GetStatus() (*CeremonyStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(string(responseData))
 	var info CeremonyStatus
 	if err := json.Unmarshal(responseData, &info); err != nil {
 		return nil, err
@@ -32,6 +39,7 @@ func (c *Client) GetStatus() (*CeremonyStatus, error) {
 
 func (c *Client) GetCurrentState() (*towersofpau.Ceremony, error) {
 	url := fmt.Sprintf("%v/%v/%v", c.url, "info", "current_state")
+	fmt.Printf("Getting current state from %v\n", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -40,13 +48,11 @@ func (c *Client) GetCurrentState() (*towersofpau.Ceremony, error) {
 	if err != nil {
 		return nil, err
 	}
-	var info towersofpau.Ceremony
-	if err := json.Unmarshal(responseData, &info); err != nil {
-		return nil, err
-	}
-
-	fmt.Println("Ceremony status received")
-	return &info, nil
+	start := time.Now()
+	defer func() {
+		fmt.Printf("Deserializing took %v\n", time.Since(start))
+	}()
+	return towersofpau.Deserialize(bytes.NewReader(responseData))
 }
 
 func (c *Client) Contribute(ceremony *towersofpau.Ceremony) error {
@@ -76,18 +82,31 @@ func (c *Client) Abort(p *Participant) error {
 	return handleStatus(resp.StatusCode)
 }
 
-func (c *Client) TryContribute(status *ParticipantQueueStatus) error {
+func (c *Client) TryContribute() error {
 	url := fmt.Sprintf("%v/%v/%v", c.url, "lobby", "try_contribute")
 
-	buf := new(bytes.Buffer)
-	encoder := json.NewEncoder(buf)
-	if err := encoder.Encode(status); err != nil {
-		return err
-	}
-	resp, err := http.Post(url, "text/html", buf)
+	fmt.Printf("Trying to contribute at %v\n", url)
+
+	request, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
 	}
+	request.Header.Set("Authorization", "Bearer "+c.sessionID)
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return err
+	}
+	responseData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var errorUnm ErrorStruct
+	if err := json.Unmarshal(responseData, &errorUnm); err == nil {
+		return errors.New(errorUnm.Error)
+	}
+
+	fmt.Println(string(responseData))
 	return handleStatus(resp.StatusCode)
 }
 
@@ -105,5 +124,5 @@ func handleStatus(status int) error {
 	case 403:
 		return errors.New("invalid ticket provided")
 	}
-	return errors.New("invalid status code")
+	return fmt.Errorf("invalid status code: %v", status)
 }
