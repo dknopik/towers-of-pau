@@ -33,12 +33,14 @@ func runParticipation(client *Client) error {
 	client.WaitForSessionID()
 
 	// Register with the coordinator
-	status, err := client.GetStatus()
+	_, err := client.GetStatus()
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("%v\n", status)
+	if err := client.TryContribute(); err != nil {
+		return err
+	}
 
 	ceremony, err := client.GetCurrentState()
 	if err != nil {
@@ -55,9 +57,10 @@ func runParticipation(client *Client) error {
 		return err
 	}
 
-	if err := client.TryContribute(); err != nil {
+	if err := client.Contribute(newCeremony); err != nil {
 		return err
 	}
+
 	/*
 		var info *Info
 		for info == nil || info.Ceremony == nil {

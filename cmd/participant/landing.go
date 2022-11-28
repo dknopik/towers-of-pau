@@ -65,6 +65,7 @@ func (c *Client) Contribute(ceremony *towersofpau.Ceremony) error {
 		return err
 	}
 	request.Header.Set("Authorization", "Bearer "+c.sessionID)
+	request.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return err
@@ -90,7 +91,7 @@ func (c *Client) Abort(p *Participant) error {
 func (c *Client) TryContribute() error {
 	url := fmt.Sprintf("%v/%v/%v", c.url, "lobby", "try_contribute")
 
-	fmt.Printf("Trying to contribute at %v\n", url)
+	fmt.Printf("Trying to contribute at %v with ssid %v\n", url, c.sessionID)
 
 	request, err := http.NewRequest("POST", url, nil)
 	if err != nil {
@@ -108,6 +109,7 @@ func (c *Client) TryContribute() error {
 
 	var errorUnm ErrorStruct
 	if err := json.Unmarshal(responseData, &errorUnm); err == nil {
+		fmt.Printf("Error: %v", errorUnm)
 		return errors.New(errorUnm.Error)
 	}
 
