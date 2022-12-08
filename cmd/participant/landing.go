@@ -107,17 +107,13 @@ func (c *Client) TryContribute() error {
 		return err
 	}
 
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		// Success!
-		return nil
-	}
-
 	var errorUnm ErrorStruct
-	if err := json.Unmarshal(responseData, &errorUnm); err != nil {
-		return fmt.Errorf("error unmarshaling error data \"%v\": %w", string(responseData), err)
+	if err := json.Unmarshal(responseData, &errorUnm); err == nil && len(errorUnm.Error) > 0 {
+		return fmt.Errorf("%v: %v", errorUnm.Code, errorUnm.Error)
 	}
 
-	return fmt.Errorf("%v: %v", errorUnm.Code, errorUnm.Error)
+	fmt.Println(string(responseData))
+	return handleStatus(resp.StatusCode)
 }
 
 func (c *Client) RequestLink() error {
