@@ -55,17 +55,20 @@ func (c *Client) GetCurrentState() (*towersofpau.Ceremony, error) {
 	return towersofpau.Deserialize(bytes.NewReader(responseData))
 }
 
-func (c *Client) Contribute(ceremony *towersofpau.Ceremony) error {
+func (c *Client) Contribute(contribution *towersofpau.BatchContribution) error {
+	fmt.Printf("Submitting our contribution\n")
 	url := fmt.Sprintf("%v/%v", c.url, "contribute")
-	buf := new(bytes.Buffer)
-	towersofpau.Serialize(buf, ceremony)
-
-	request, err := http.NewRequest("POST", url, buf)
+	marshalled, err := json.Marshal(contribution)
 	if err != nil {
 		return err
 	}
-	request.Header.Set("Authorization", "Bearer "+c.sessionID)
+
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(marshalled))
+	if err != nil {
+		return err
+	}
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Add("Authorization", "Bearer "+c.sessionID)
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return err
@@ -88,32 +91,38 @@ func (c *Client) Abort(p *Participant) error {
 	return handleStatus(resp.StatusCode)
 }
 
-func (c *Client) TryContribute() error {
+func (c *Client) TryContribute() (*towersofpau.BatchContribution, error) {
 	url := fmt.Sprintf("%v/%v/%v", c.url, "lobby", "try_contribute")
-
 	fmt.Printf("Trying to contribute at %v with ssid %v\n", url, c.sessionID)
 
 	request, err := http.NewRequest("POST", url, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	request.Header.Set("Authorization", "Bearer "+c.sessionID)
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	responseData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var errorUnm ErrorStruct
 	if err := json.Unmarshal(responseData, &errorUnm); err == nil && len(errorUnm.Error) > 0 {
-		return fmt.Errorf("%v: %v", errorUnm.Code, errorUnm.Error)
+		return nil, fmt.Errorf("%v: %v", errorUnm.Code, errorUnm.Error)
 	}
 
-	fmt.Println(string(responseData))
-	return handleStatus(resp.StatusCode)
+	if err := handleStatus(resp.StatusCode); err != nil {
+		return nil, err
+	}
+
+	var contribution towersofpau.BatchContribution
+	if err := json.Unmarshal(responseData, &contribution); err != nil {
+		return nil, err
+	}
+	return &contribution, nil
 }
 
 func (c *Client) RequestLink() error {
@@ -123,7 +132,6 @@ func (c *Client) RequestLink() error {
 func handleStatus(status int) error {
 	switch status {
 	case 200:
-		fmt.Println("Submitted ceremony successfully")
 		return nil
 	case 400:
 		return errors.New("invalid ceremony")

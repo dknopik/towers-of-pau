@@ -16,16 +16,14 @@ import (
 type Client struct {
 	url          string
 	registration *registration
-	sessionCh    chan string
 	sessionID    string
 	closeCh      chan struct{}
 }
 
 func NewClient(url string) *Client {
 	return &Client{
-		url:       url,
-		closeCh:   make(chan struct{}),
-		sessionCh: make(chan string),
+		url:     url,
+		closeCh: make(chan struct{}),
 	}
 }
 
@@ -33,10 +31,6 @@ type registration struct {
 	Start    int
 	Deadline int
 	Ticket   string
-}
-
-func (c *Client) WaitForSessionID() {
-	c.sessionID = <-c.sessionCh
 }
 
 func (c *Client) StartTime() *time.Time {
