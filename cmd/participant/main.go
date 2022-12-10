@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dknopik/towersofpau"
@@ -38,8 +39,19 @@ func runParticipation(client *Client) error {
 		panic(err)
 	}
 
-	if err := client.TryContribute(); err != nil {
-		return err
+	attemptCount := 0
+	for {
+		err := client.TryContribute()
+		if err == nil {
+			break
+		}
+		attemptCount += 1
+		if strings.HasPrefix(err.Error(), "TryContributeError::AnotherContributionInProgress") {
+			fmt.Fprintf(os.Stderr, "Another contribution is in progress, trying again in 15 seconds (attempt %v)\n", attemptCount)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error attempting to contribute: %v (attempt %v)\n", err, attemptCount)
+		}
+		time.Sleep(15 * time.Second)
 	}
 
 	ceremony, err := client.GetCurrentState()

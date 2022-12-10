@@ -108,9 +108,8 @@ func (c *Client) TryContribute() error {
 	}
 
 	var errorUnm ErrorStruct
-	if err := json.Unmarshal(responseData, &errorUnm); err == nil {
-		fmt.Printf("Error: %v", errorUnm)
-		return errors.New(errorUnm.Error)
+	if err := json.Unmarshal(responseData, &errorUnm); err == nil && len(errorUnm.Error) > 0 {
+		return fmt.Errorf("%v: %v", errorUnm.Code, errorUnm.Error)
 	}
 
 	fmt.Println(string(responseData))
