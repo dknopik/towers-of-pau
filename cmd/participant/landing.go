@@ -73,7 +73,15 @@ func (c *Client) Contribute(contribution *towersofpau.BatchContribution) error {
 	if err != nil {
 		return err
 	}
-	return handleStatus(resp.StatusCode)
+	if err := handleStatus(resp.StatusCode); err != nil {
+		responseData, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Response: %v\n", string(responseData))
+		return err
+	}
+	return nil
 }
 
 func (c *Client) Abort(p *Participant) error {
@@ -88,7 +96,15 @@ func (c *Client) Abort(p *Participant) error {
 	if err != nil {
 		return err
 	}
-	return handleStatus(resp.StatusCode)
+	if err := handleStatus(resp.StatusCode); err != nil {
+		responseData, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Response: %v\n", string(responseData))
+		return err
+	}
+	return nil
 }
 
 func (c *Client) TryContribute() (*towersofpau.BatchContribution, error) {
@@ -99,7 +115,7 @@ func (c *Client) TryContribute() (*towersofpau.BatchContribution, error) {
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("Authorization", "Bearer "+c.sessionID)
+	request.Header.Add("Authorization", "Bearer "+c.sessionID)
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return nil, err
@@ -115,6 +131,7 @@ func (c *Client) TryContribute() (*towersofpau.BatchContribution, error) {
 	}
 
 	if err := handleStatus(resp.StatusCode); err != nil {
+		fmt.Printf("Response: %v", string(responseData))
 		return nil, err
 	}
 

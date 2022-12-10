@@ -37,6 +37,21 @@ func runParticipation(client *Client) error {
 		attemptCount = 0
 		contribution *towersofpau.BatchContribution
 	)
+	/*
+		marshalled, err := os.ReadFile("temp.json")
+		if err != nil {
+			return err
+		}
+		var c towersofpau.BatchContribution
+		if err := json.Unmarshal(marshalled, &c); err != nil {
+			return err
+		}
+		marshalled2, err := json.Marshal(contribution)
+		if err != nil {
+			return err
+		}
+		os.WriteFile("temp2.json", marshalled2, fs.ModeAppend)
+	*/
 	for {
 		contribution, err = client.TryContribute()
 		if err == nil {

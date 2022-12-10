@@ -13,7 +13,7 @@ import (
 )
 
 type BatchContribution struct {
-	Contributions []*Contribution
+	Contributions []*Contribution `json:"contributions"`
 }
 
 func (b *BatchContribution) Copy() *BatchContribution {
@@ -46,10 +46,10 @@ func (b *BatchContribution) SubgroupChecks() bool {
 }
 
 type Contribution struct {
-	NumG1Powers int         `json:"numG1Powers"`
-	NumG2Powers int         `json:"numG2Powers"`
-	PowersOfTau PowersOfTau `json:"powersOfTau"`
-	PotPubKey   *blst.P2    `json:"witness"`
+	NumG1Powers int
+	NumG2Powers int
+	PowersOfTau PowersOfTau
+	PotPubKey   *blst.P2
 }
 
 func (t *Contribution) Copy() *Contribution {
@@ -72,6 +72,8 @@ func (c *Contribution) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
 	}
+	c.NumG1Powers = v.NumG1Powers
+	c.NumG2Powers = v.NumG2Powers
 	c.PowersOfTau.G1Powers = make([]*blst.P1, len(v.PowersOfTau.G1Powers))
 	c.PowersOfTau.G2Powers = make([]*blst.P2, len(v.PowersOfTau.G2Powers))
 
@@ -119,11 +121,11 @@ func (c *Contribution) MarshalJSON() ([]byte, error) {
 		NumG1Powers int             `json:"numG1Powers"`
 		NumG2Powers int             `json:"numG2Powers"`
 		PowersOfTau JSONPowersOfTau `json:"powersOfTau"`
-		PotPubKey   string          `json:"potPubKey"`
+		PotPubKey   string          `json:"potPubkey"`
 	}
 
-	v.NumG1Powers = c.NumG1Powers
-	v.NumG2Powers = c.NumG2Powers
+	v.NumG1Powers = len(c.PowersOfTau.G1Powers)
+	v.NumG2Powers = len(c.PowersOfTau.G2Powers)
 	v.PowersOfTau.G1Powers = make([]string, len(c.PowersOfTau.G1Powers))
 	v.PowersOfTau.G2Powers = make([]string, len(c.PowersOfTau.G2Powers))
 
