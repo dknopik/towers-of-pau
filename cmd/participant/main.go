@@ -82,7 +82,7 @@ func runParticipation(client *Client) error {
 		return err
 	}
 
-	close(client.closeCh)
+	fmt.Println("Successfully contributed, exiting")
 	return nil
 }
 

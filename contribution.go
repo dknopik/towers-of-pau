@@ -164,10 +164,16 @@ func UpdatePowersOfTauFastContribution(transcript *Contribution, secret []byte) 
 	if sec == nil {
 		return errors.New("invalid secret")
 	}
-	scalar := &(*sec)
+	one := make([]byte, 32)
+	one[31] = 1
+	scalar := new(blst.Scalar).Deserialize(one)
+	if scalar == nil {
+		return errors.New("failed to generate one scalar")
+	}
 	scalars := make([]*blst.Scalar, transcript.NumG1Powers)
 	for i := 0; i < transcript.NumG1Powers; i++ {
-		scalars[i] = &(*scalar)
+		copy := *scalar
+		scalars[i] = &copy
 		var ok bool
 		scalar, ok = scalar.Mul(sec)
 		if !ok {
@@ -195,6 +201,11 @@ func UpdatePotPubkey(transcript *Contribution, secret []byte) error {
 	if sec == nil {
 		return errors.New("invalid secret")
 	}
-	transcript.PotPubKey = transcript.PotPubKey.Mult(sec)
+	newPk := new(blst.P2Affine).From(sec)
+	if newPk == nil {
+		return errors.New("invalid pk")
+	}
+	transcript.PotPubKey = new(blst.P2)
+	transcript.PotPubKey.FromAffine(newPk)
 	return nil
 }

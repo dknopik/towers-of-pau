@@ -17,13 +17,11 @@ type Client struct {
 	url          string
 	registration *registration
 	sessionID    string
-	closeCh      chan struct{}
 }
 
 func NewClient(url string) *Client {
 	return &Client{
-		url:     url,
-		closeCh: make(chan struct{}),
+		url: url,
 	}
 }
 

@@ -73,12 +73,14 @@ func (c *Client) Contribute(contribution *towersofpau.BatchContribution) error {
 	if err != nil {
 		return err
 	}
+
+	responseData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Response: %v\n", string(responseData))
+
 	if err := handleStatus(resp.StatusCode); err != nil {
-		responseData, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Response: %v\n", string(responseData))
 		return err
 	}
 	return nil
