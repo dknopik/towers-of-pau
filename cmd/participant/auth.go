@@ -25,7 +25,7 @@ func (c *Client) Login() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Authenticated as %v with ssid %v\n", token.Idtoken.Nickname, token.SessionID)
+	fmt.Printf("Authenticated as %v with ssid %v\n", token.IDtoken.Nickname, token.SessionID)
 	c.sessionID = token.SessionID
 	return nil
 }
@@ -70,7 +70,7 @@ type cookie struct {
 }
 
 type token struct {
-	Idtoken   cookie `json:"id_token"`
+	IDtoken   cookie `json:"id_token"`
 	SessionID string `json:"session_id"`
 }
 

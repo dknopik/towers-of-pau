@@ -1,23 +1,15 @@
 package main
 
-type QueueStatus string
-
-const (
-	notQueued         QueueStatus = "notQueued"
-	queued            QueueStatus = "queued"
-	readyToContribute QueueStatus = "readyToContribute"
-	contributing      QueueStatus = "contributing"
-	expired           QueueStatus = "expired"
-)
+import "fmt"
 
 type CeremonyStatus struct {
+	LobbySize        int32  `json:"lobby_size"`
+	NumContributions int32  `json:"num_contributions"`
+	SequencerAddress string `json:"sequencer_address"`
 }
 
-type ParticipantQueueStatus struct {
-	QueuePosition   int32
-	NextCheckinTime int32
-	QueueStatus     QueueStatus
-	Id              string
+func (c *CeremonyStatus) String() string {
+	return fmt.Sprintf("LobbySize: %v, NumContributions: %v, Sequencer: %v", c.LobbySize, c.NumContributions, c.SequencerAddress)
 }
 
 type Participant struct {
@@ -28,4 +20,9 @@ type Participant struct {
 type AuthResponse struct {
 	Participant Participant
 	Token       string
+}
+
+type ErrorStruct struct {
+	Code  string `json:"code"`
+	Error string `json:"error"`
 }
