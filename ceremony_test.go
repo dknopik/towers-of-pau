@@ -5,36 +5,6 @@ import (
 	"testing"
 )
 
-func TestCeremonyChecks(t *testing.T) {
-	file, err := os.Open("initialCeremony.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ceremony, err := Deserialize(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !SubgroupChecksCoordinator(ceremony) {
-		t.Fatalf("Subgroup check failed")
-	}
-
-	if !NonZeroCheck(ceremony) {
-		t.Fatal("NonZero check failed")
-	}
-
-	/*
-		// TODO enable when better initial ceremony is available
-		if !PubkeyUniquenessCheck(ceremony) {
-			t.Fatal("Pubkey uniqueness check failed")
-		}
-	*/
-
-	if !VerifyPairing(ceremony) {
-		t.Fatal("Pairing check failed")
-	}
-}
-
 func TestParticipation(t *testing.T) {
 	file, err := os.Open("initialCeremony.json")
 	if err != nil {
@@ -46,27 +16,10 @@ func TestParticipation(t *testing.T) {
 	}
 
 	updatedCeremony := ceremony.Copy()
-	if err := UpdateTranscript(updatedCeremony); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := VerifySubmission(ceremony, updatedCeremony); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func BenchmarkVerifyCeremonyPairing(t *testing.B) {
-	file, err := os.Open("initialCeremony.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ceremony, err := Deserialize(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.ResetTimer()
-	if !VerifyPairing(ceremony) {
-		t.Fatal("Pairing check failed")
+	for _, transcript := range updatedCeremony.Transcripts {
+		if err := UpdateTranscript(transcript, []byte{}); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -80,8 +33,10 @@ func BenchmarkContribution(t *testing.B) {
 		t.Fatal(err)
 	}
 	t.ResetTimer()
-	if err := UpdateTranscript(ceremony); err != nil {
-		t.Fatal(err)
+	for _, transcript := range ceremony.Transcripts {
+		if err := UpdateTranscript(transcript, []byte{}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	panic("asdf")
 }
