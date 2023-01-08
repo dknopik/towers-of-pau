@@ -6,6 +6,16 @@
       const go = new Go();
       WebAssembly.instantiateStreaming(fetch("towersofpau.wasm"), go.importObject).then((result) => {
         go.run(result.instance);
+
+        // generate pot pubkeys
+        generatePotPubkey("some secret").then(function (potPubkey) {
+          // "0xabc..."
+        })
+
+        // contribute (view initialContribution json files for payload example)
+        contribute(JSON.stringify(contribution), "some secret").then(function (payload) {
+          const newContribution = JSON.parse(payload);
+        })
       });
     </script>
   </head>
