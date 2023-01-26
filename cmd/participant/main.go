@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -63,7 +66,7 @@ func runParticipation(client *Client) error {
 		} else {
 			fmt.Fprintf(os.Stderr, "Error attempting to contribute: %v (attempt %v)\n", err, attemptCount)
 		}
-		time.Sleep(15 * time.Second)
+		time.Sleep(30 * time.Second)
 	}
 
 	newCeremony := contribution.Copy()
@@ -71,16 +74,15 @@ func runParticipation(client *Client) error {
 		return err
 	}
 
-	/*
-		// No need to verify our own submission atm
-		if err := towersofpau.VerifySubmission(ceremony, newCeremony); err != nil {
-			return err
-		}
-	*/
-
 	if err := client.Contribute(newCeremony); err != nil {
 		return err
 	}
+
+	marshalled, err := json.Marshal(contribution)
+	if err != nil {
+		return err
+	}
+	ioutil.WriteFile("contribution", marshalled, fs.ModeAppend)
 
 	fmt.Println("Successfully contributed, exiting")
 	return nil

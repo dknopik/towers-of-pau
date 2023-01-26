@@ -56,7 +56,7 @@ func (c *Client) RequestAuthLink() (*AuthLinks, error) {
 
 func startSIWEPage(url string) error {
 	fmt.Printf("Signing in with ethereum on %v\n", url)
-	cmd := exec.Command("chromium", url)
+	cmd := exec.Command("xdg-open", url)
 	if err := cmd.Start(); err != nil {
 		return err
 	}

@@ -13,6 +13,8 @@ All submissions are published, s.th. participants can make sure that their submi
 ```
 cd cmd/participant
 go build
-./participant https://dknopik.de
+./participant https://seq.ceremony.ethereum.org
 ```
-You can see your results on https://dknopik.de
+You will be asked to sign in with ethereum in your browser and receive a string.
+You will need to copy-paste this string into the console.
+One cool thing about this implementation is, that it will pick up again, even if you suspend your laptop for a bit.
