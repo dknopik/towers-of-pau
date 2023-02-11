@@ -17,3 +17,4 @@
 cmd/participant/participant
 cmd/coordinator/coordinator
 cmd/coordinator/history
+contribution.json
