@@ -78,11 +78,11 @@ func runParticipation(client *Client) error {
 		return err
 	}
 
-	marshalled, err := json.Marshal(contribution)
+	marshalled, err := json.Marshal(newCeremony)
 	if err != nil {
 		return err
 	}
-	ioutil.WriteFile("contribution", marshalled, fs.ModeAppend)
+	ioutil.WriteFile("contribution.json", marshalled, fs.ModeAppend | 0o644)
 
 	fmt.Println("Successfully contributed, exiting")
 	return nil

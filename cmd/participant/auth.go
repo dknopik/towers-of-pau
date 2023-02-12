@@ -16,6 +16,7 @@ func (c *Client) Login() error {
 		return err
 	}
 
+	fmt.Printf("Alternative GitHub sign in URL: %v\n", links.GithubAuthURL)
 	if err := startSIWEPage(links.EthAuthURL); err != nil {
 		return err
 	}
@@ -58,7 +59,8 @@ func startSIWEPage(url string) error {
 	fmt.Printf("Signing in with ethereum on %v\n", url)
 	cmd := exec.Command("xdg-open", url)
 	if err := cmd.Start(); err != nil {
-		return err
+		fmt.Printf("Failed to launch browser. Please open the above URL manually. Error: %v\n", err)
+		return nil
 	}
 	return cmd.Wait()
 }
