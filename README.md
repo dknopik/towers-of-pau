@@ -18,3 +18,12 @@ go build
 You will be asked to sign in with ethereum in your browser and receive a string.
 You will need to copy-paste this string into the console.
 One cool thing about this implementation is, that it will pick up again, even if you suspend your laptop for a bit.
+
+
+For verifying the official KZG Ceremony:
+```
+cd cmd/verifier
+go build
+wget https://seq.ceremony.ethereum.org/info/current_state
+./verifier current_state
+```
