@@ -63,7 +63,9 @@ func (t *Transcript) Copy() *Transcript {
 }
 
 type Ceremony struct {
-	Transcripts []*Transcript
+	Transcripts                []*Transcript
+	ParticipantIDs             []string
+	ParticipantEcdsaSignatures []string
 }
 
 func (c *Ceremony) Copy() *Ceremony {
@@ -84,6 +86,7 @@ type JSONPowersOfTau struct {
 type JSONWitness struct {
 	RunningProducts []string `json:"runningProducts"`
 	PotPubkeys      []string `json:"potPubkeys"`
+	BLSSignatures   []string `json:"blsSignatures"`
 }
 
 type JSONTranscript struct {
@@ -94,27 +97,24 @@ type JSONTranscript struct {
 }
 
 type JSONCeremony struct {
-	Transcripts []JSONTranscript `json:"transcripts"`
+	Transcripts                []JSONTranscript `json:"transcripts"`
+	ParticipantIDs             []string         `json:"participantIds"`
+	ParticipantEcdsaSignatures []string         `json:"participantEcdsaSignatures"`
 }
 
 func Deserialize(reader io.Reader) (*Ceremony, error) {
 	decoder := json.NewDecoder(reader)
 	decoder.DisallowUnknownFields()
-	jsonceremony := JSONCeremony{
-		[]JSONTranscript{},
-	}
-	err := decoder.Decode(&jsonceremony)
-	if err != nil {
+	var jsonceremony JSONCeremony
+	if err := decoder.Decode(&jsonceremony); err != nil {
 		return nil, err
 	}
 	return DeserializeJSONCeremony(jsonceremony)
 }
 
-func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
-	ceremony := Ceremony{
-		make([]*Transcript, 0, len(jsonceremony.Transcripts)),
-	}
-	for _, jsontranscript := range jsonceremony.Transcripts {
+func DeserializeTranscripts(jsontranscripts []JSONTranscript) ([]*Transcript, error) {
+	var result []*Transcript
+	for _, jsontranscript := range jsontranscripts {
 		transcript := Transcript{
 			NumG1Powers: jsontranscript.NumG1Powers,
 			NumG2Powers: jsontranscript.NumG2Powers,
@@ -183,9 +183,21 @@ func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
 			transcript.Witness.PotPubkeys[i] = *affine
 		}
 
-		ceremony.Transcripts = append(ceremony.Transcripts, &transcript)
+		result = append(result, &transcript)
 	}
-	return &ceremony, nil
+	return result, nil
+}
+
+func DeserializeJSONCeremony(jsonceremony JSONCeremony) (*Ceremony, error) {
+	transcripts, err := DeserializeTranscripts(jsonceremony.Transcripts)
+	if err != nil {
+		return nil, err
+	}
+	return &Ceremony{
+		transcripts,
+		jsonceremony.ParticipantIDs,
+		jsonceremony.ParticipantEcdsaSignatures,
+	}, nil
 }
 
 func Serialize(writer io.Writer, ceremony *Ceremony) error {
@@ -201,11 +213,9 @@ func Serialize(writer io.Writer, ceremony *Ceremony) error {
 	return nil
 }
 
-func SerializeJSONCeremony(ceremony *Ceremony) (JSONCeremony, error) {
-	jsonceremony := JSONCeremony{
-		make([]JSONTranscript, 0, len(ceremony.Transcripts)),
-	}
-	for _, transcript := range ceremony.Transcripts {
+func SerializeTranscripts(transcripts []*Transcript) ([]JSONTranscript, error) {
+	var result []JSONTranscript
+	for _, transcript := range transcripts {
 		jsontranscript := JSONTranscript{
 			NumG1Powers: transcript.NumG1Powers,
 			NumG2Powers: transcript.NumG2Powers,
@@ -235,7 +245,15 @@ func SerializeJSONCeremony(ceremony *Ceremony) (JSONCeremony, error) {
 			jsontranscript.Witness.PotPubkeys[i] = "0x" + hex.EncodeToString(point.Compress())
 		}
 
-		jsonceremony.Transcripts = append(jsonceremony.Transcripts, jsontranscript)
+		result = append(result, jsontranscript)
 	}
-	return jsonceremony, nil
+	return result, nil
+}
+
+func SerializeJSONCeremony(ceremony *Ceremony) (JSONCeremony, error) {
+	transcripts, err := SerializeTranscripts(ceremony.Transcripts)
+	return JSONCeremony{
+		Transcripts:                transcripts,
+		ParticipantIDs:             ceremony.ParticipantIDs,
+		ParticipantEcdsaSignatures: ceremony.ParticipantEcdsaSignatures}, err
 }

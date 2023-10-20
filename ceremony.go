@@ -58,6 +58,25 @@ func VerifySubmission(prevCeremony, newCeremony *Ceremony) error {
 	return nil
 }
 
+func VerifyCeremony(newCeremony *Ceremony) error {
+	if !NonZeroCheck(newCeremony) {
+		return errors.New("nonZero check failed")
+	}
+
+	if !SubgroupChecksCoordinator(newCeremony) {
+		return errors.New("subgroup check failed")
+	}
+
+	if !PubkeyUniquenessCheck(newCeremony) {
+		//return errors.New("pubkey uniqueness check failed")
+	}
+
+	if !VerifyPairing(newCeremony) {
+		return errors.New("pairing check failed")
+	}
+	return nil
+}
+
 func checkLength(prev, next *Ceremony) error {
 	for i, t := range prev.Transcripts {
 		if len(t.Witness.PotPubkeys) >= len(next.Transcripts[i].Witness.PotPubkeys) {
